@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="스마트 가계부">
+  <title>스마트 가계부</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { -webkit-tap-highlight-color: transparent; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-900 min-h-screen pb-16">
+
+  <header class="bg-indigo-600 text-white pt-10 pb-5 px-6 shadow-md sticky top-0 z-10">
+    <div class="max-w-4xl mx-auto flex justify-between items-center">
+      <div>
+        <h1 class="text-xl font-bold">스마트 가계부</h1>
+        <p id="syncStatus" class="text-xs text-indigo-200 mt-0.5">기기 로컬 저장 모드</p>
+      </div>
+      <button onclick="toggleConfig()" class="text-xs bg-indigo-500 hover:bg-indigo-400 px-3 py-1.5 rounded-lg font-medium transition">
+        연동 설정
+      </button>
+    </div>
+  </header>
+
+  <div id="configModal" class="hidden max-w-4xl mx-auto mt-4 px-4">
+    <div class="bg-white p-5 rounded-2xl shadow-md border border-indigo-100">
+      <h2 class="text-sm font-bold text-slate-700 mb-2">Supabase 클라우드 연동 설정</h2>
+      <div class="space-y-2">
+        <input id="sbUrl" type="text" placeholder="Project URL (https://xxx.supabase.co)" class="w-full p-2.5 text-sm border rounded-xl">
+        <input id="sbKey" type="password" placeholder="Publishable / Anon Key" class="w-full p-2.5 text-sm border rounded-xl">
+        <div class="flex gap-2 pt-1">
+          <button onclick="saveCloudConfig()" class="bg-indigo-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl">저장 및 연결</button>
+          <button onclick="toggleConfig()" class="bg-slate-200 text-slate-700 text-xs font-bold px-4 py-2.5 rounded-xl">닫기</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <main class="max-w-4xl mx-auto mt-6 px-4 space-y-6">
+    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80">
+      <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">총 잔액</span>
+      <div id="totalBalance" class="text-3xl font-extrabold text-slate-800 mt-1">0원</div>
+      <div class="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-100">
+        <div>
+          <span class="text-xs text-slate-400">총 수입</span>
+          <p id="totalIncome" class="text-sm font-bold text-emerald-600 mt-0.5">+0원</p>
+        </div>
+        <div>
+          <span class="text-xs text-slate-400">총 지출</span>
+          <p id="totalExpense" class="text-sm font-bold text-rose-500 mt-0.5">-0원</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-indigo-50 p-5 rounded-2xl border border-indigo-100 shadow-sm">
+      <label class="text-xs font-bold text-indigo-900 block mb-1.5">⚡ 빠른 입력 (예: 용돈 2000, 밥4000)</label>
+      <form onsubmit="handleQuickSubmit(event)" class="flex gap-2">
+        <input id="quickInput" type="text" placeholder="내역과 금액 입력" class="flex-1 p-3 bg-white border border-indigo-200 rounded-xl text-sm focus:outline-none focus:border-indigo-600">
+        <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 rounded-xl text-xs shrink-0 transition">등록</button>
+      </form>
+    </div>
+
+    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80">
+      <h2 class="text-base font-bold text-slate-800 mb-4">최근 기록 내역</h2>
+      <div id="entryList" class="divide-y divide-slate-100 space-y-2">
+        <p class="text-sm text-slate-400 py-6 text-center">기록이 없습니다.</p>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    let supabaseClient = null;
+    let entries = [];
+
+    window.onload = () => {
+      initCloud();
+      loadEntries();
+    };
+
+    function toggleConfig() {
+      document.getElementById('configModal').classList.toggle('hidden');
+    }
+
+    function initCloud() {
+      const url = localStorage.getItem('sb_url');
+      const key = localStorage.getItem('sb_key');
+      if (url && key) {
+        document.getElementById('sbUrl').value = url;
+        document.getElementById('sbKey').value = key;
+        supabaseClient = window.supabase.createClient(url, key);
+        document.getElementById('syncStatus').innerText = '☁️ 실시간 연동 중';
+      }
+    }
+
+    function saveCloudConfig() {
+      const url = document.getElementById('sbUrl').value.trim();
+      const key = document.getElementById('sbKey').value.trim();
+      if (url && key) {
+        localStorage.setItem('sb_url', url);
+        localStorage.setItem('sb_key', key);
+        initCloud();
+        loadEntries();
+        toggleConfig();
+      }
+    }
+
+    async function loadEntries() {
+      if (supabaseClient) {
+        const { data, error } = await supabaseClient.from('ledger').select('*').order('created_at', { ascending: false });
+        if (!error && data) {
+          entries = data;
+          localStorage.setItem('local_ledger', JSON.stringify(entries));
+        }
+      } else {
+        const saved = localStorage.getItem('local_ledger');
+        entries = saved ? JSON.parse(saved) : [];
+      }
+      renderUI();
+    }
+
+    function handleQuickSubmit(e) {
+      e.preventDefault();
+      const val = document.getElementById('quickInput').value.trim();
+      if (!val) return;
+      
+      const match = val.match(/^(.+?)\s*([+-]?\d[\d,]*)\s*원?$/);
+      let title = val;
+      let amount = 0;
+      let type = 'expense';
+      let category = '식비/간식';
+
+      if (match) {
+        title = match[1].trim();
+        amount = Math.abs(parseInt(match[2].replace(/,/g, ''), 10));
+      } else {
+        alert('금액과 함께 입력해주세요 (예: 밥4000)');
+        return;
+      }
+
+      if (title.includes('용돈') || title.includes('월급') || title.includes('입금')) {
+        type = 'income';
+        category = '용돈/기타';
+      }
+
+      saveNewItem(title, amount, type, category);
+      document.getElementById('quickInput').value = '';
+    }
+
+    async function saveNewItem(title, amount, type, category) {
+      const newItem = {
+        id: Date.now(),
+        title,
+        amount,
+        type,
+        category,
+        created_at: new Date().toISOString()
+      };
+
+      entries.unshift(newItem);
+      localStorage.setItem('local_ledger', JSON.stringify(entries));
+
+      if (supabaseClient) {
+        await supabaseClient.from('ledger').insert([newItem]);
+      }
+      renderUI();
+    }
+
+    async function deleteEntry(id) {
+      if (!confirm('삭제할까요?')) return;
+      entries = entries.filter(item => item.id !== id);
+      localStorage.setItem('local_ledger', JSON.stringify(entries));
+      if (supabaseClient) {
+        await supabaseClient.from('ledger').delete().eq('id', id);
+      }
+      renderUI();
+    }
+
+    function renderUI() {
+      let income = 0, expense = 0;
+      const listEl = document.getElementById('entryList');
+      listEl.innerHTML = '';
+
+      if (entries.length === 0) {
+        listEl.innerHTML = '<p class="text-sm text-slate-400 py-6 text-center">기록이 없습니다.</p>';
+      }
+
+      entries.forEach(item => {
+        if (item.type === 'income') income += item.amount;
+        else expense += item.amount;
+
+        const isInc = item.type === 'income';
+        const row = document.createElement('div');
+        row.className = 'flex justify-between items-center py-3';
+        row.innerHTML = `
+          <div>
+            <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-medium">${item.category}</span>
+            <span class="text-sm font-bold text-slate-800 ml-1.5">${item.title}</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-sm font-extrabold ${isInc ? 'text-emerald-600' : 'text-rose-500'}">
+              ${isInc ? '+' : '-'}${item.amount.toLocaleString()}원
+            </span>
+            <button onclick="deleteEntry(${item.id})" class="text-xs text-slate-400 hover:text-rose-500 ml-2">삭제</button>
+          </div>
+        `;
+        listEl.appendChild(row);
+      });
+
+      document.getElementById('totalIncome').innerText = `+${income.toLocaleString()}원`;
+      document.getElementById('totalExpense').innerText = `-${expense.toLocaleString()}원`;
+      document.getElementById('totalBalance').innerText = `${(income - expense).toLocaleString()}원`;
+    }
+  </script>
+</body>
+</html>
