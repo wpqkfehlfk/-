@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="가계부">
-  <title>스마트 가계부 iOS Dark v5.2</title>
+  <title>스마트 가계부 iOS Dark v6.0 Pro</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -19,6 +19,7 @@
       --ios-green: #30D158;
       --ios-red: #FF453A;
       --ios-orange: #FF9F0A;
+      --ios-purple: #BF5AF2;
       --ios-gray: #8E8E93;
       --spring-easing: cubic-bezier(0.22, 1, 0.36, 1);
     }
@@ -33,7 +34,7 @@
     }
 
     .ios-glass-header {
-      background: rgba(28, 28, 30, 0.75);
+      background: rgba(28, 28, 30, 0.78);
       backdrop-filter: saturate(180%) blur(24px);
       -webkit-backdrop-filter: saturate(180%) blur(24px);
       border-bottom: 0.5px solid rgba(255, 255, 255, 0.1);
@@ -112,17 +113,30 @@
     .ios-list-item:active {
       background-color: rgba(255, 255, 255, 0.05);
     }
+
+    /* 캘린더 그리드 셀 스타일 */
+    .cal-cell {
+      min-height: 58px;
+      border-radius: 12px;
+      background-color: rgba(44, 44, 46, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      transition: all 0.2s var(--spring-easing);
+    }
+    .cal-today {
+      border: 1.5px solid var(--ios-blue);
+      background-color: rgba(10, 132, 255, 0.12);
+    }
   </style>
 </head>
-<body class="min-h-screen pb-24">
+<body class="min-h-screen pb-28">
 
-  <!-- 상단 헤더 -->
+  <!-- 상단 고정 블러 헤더 -->
   <header class="ios-glass-header pt-11 pb-3.5 px-5 sticky top-0 z-30">
     <div class="max-w-5xl mx-auto flex justify-between items-center">
       <div>
         <div class="flex items-center gap-2">
           <h1 class="text-[22px] font-extrabold tracking-tight text-white">나의 가계부</h1>
-          <span class="text-[10px] bg-[#0A84FF]/20 text-[#0A84FF] px-2 py-0.5 rounded-full font-bold border border-[#0A84FF]/30">v5.2 검색탑재</span>
+          <span class="text-[10px] bg-[#BF5AF2]/20 text-[#BF5AF2] px-2 py-0.5 rounded-full font-bold border border-[#BF5AF2]/30">v6.0 Pro</span>
         </div>
         <div class="flex items-center gap-1.5 mt-0.5">
           <span id="syncDot" class="w-2 h-2 rounded-full bg-[#30D158] inline-block transition-colors duration-300"></span>
@@ -148,7 +162,7 @@
       <div class="flex justify-between items-start mb-2">
         <div>
           <h2 class="text-[15px] font-bold text-white">☁️ 아이폰 ↔ 아이패드 실시간 연동 설정</h2>
-          <p class="text-[12px] text-[#8E8E93] mt-0.5">Supabase URL과 Key를 입력하면 잔액과 알림 설정이 동기화됩니다.</p>
+          <p class="text-[12px] text-[#8E8E93] mt-0.5">Supabase URL과 Key를 입력하면 모든 내역·정기결제·저축금고가 동기화됩니다.</p>
         </div>
       </div>
       <div class="space-y-3 mt-3">
@@ -169,7 +183,7 @@
     </div>
   </div>
 
-  <!-- 메인 컨텐츠 -->
+  <!-- 메인 그리드 레이아웃 -->
   <main class="max-w-5xl mx-auto mt-5 px-4 grid grid-cols-1 md:grid-cols-12 gap-5">
     
     <!-- 왼쪽/상단 컬럼 -->
@@ -230,8 +244,8 @@
         </div>
       </div>
 
-      <!-- 2. 한 줄 빠른 입력 -->
-      <div class="ios-card p-5 border border-[#0A84FF]/25 animate-ios-in" style="animation-delay: 0.06s;">
+      <!-- 2. 한 줄 빠른 입력 바 -->
+      <div class="ios-card p-5 border border-[#0A84FF]/25 animate-ios-in" style="animation-delay: 0.05s;">
         <div class="flex justify-between items-center mb-2">
           <div class="flex items-center gap-1.5">
             <span class="text-sm">⚡</span>
@@ -250,8 +264,8 @@
         <p id="quickPreview" class="text-[12px] text-[#0A84FF] mt-2.5 hidden font-semibold bg-[#0A84FF]/10 px-3 py-1.5 rounded-xl border border-[#0A84FF]/20"></p>
       </div>
 
-      <!-- 3. 내역 상세 기록 및 수정 폼 -->
-      <div id="formCard" class="ios-card p-6 animate-ios-in" style="animation-delay: 0.1s;">
+      <!-- 3. 내역 상세 기록 및 수정 카드 -->
+      <div id="formCard" class="ios-card p-6 animate-ios-in" style="animation-delay: 0.08s;">
         <div class="flex justify-between items-center mb-4">
           <h2 id="formTitle" class="text-[16px] font-bold text-white">내역 상세 기록</h2>
           <span id="memoryBadge" class="hidden text-[11px] bg-[#FF9F0A]/20 text-[#FF9F0A] px-2.5 py-1 rounded-full font-bold border border-[#FF9F0A]/30">
@@ -310,31 +324,173 @@
           </div>
         </form>
       </div>
+
+      <!-- 4. [신규 기능 1] 정기 결제 / 고정 지출 자동 관리 시스템 -->
+      <div class="ios-card p-6 animate-ios-in" style="animation-delay: 0.11s;">
+        <div class="flex justify-between items-center mb-2">
+          <div>
+            <h2 class="text-[15px] font-bold text-white flex items-center gap-1.5">
+              <span>🔄</span>
+              <span>정기 결제 · 구독 자동 관리</span>
+            </h2>
+            <p class="text-[11px] text-[#8E8E93] mt-0.5">매월 지정한 결제일에 자동으로 지출 내역에 추가됩니다</p>
+          </div>
+          <button onclick="toggleSubModal()" class="ios-btn text-[12px] bg-[#BF5AF2]/20 text-[#BF5AF2] border border-[#BF5AF2]/30 px-3 py-1.5 rounded-full font-bold">
+            + 정기결제 추가
+          </button>
+        </div>
+
+        <!-- 정기 결제 추가 미니 폼 -->
+        <div id="subFormBox" class="hidden mt-3 p-4 bg-[#2C2C2E]/80 rounded-2xl border border-white/10 space-y-3">
+          <div class="grid grid-cols-3 gap-2">
+            <div class="col-span-2">
+              <label class="text-[11px] text-[#8E8E93]">구독/고정지출 이름</label>
+              <input id="subTitle" type="text" placeholder="예: 유튜브 프리미엄" class="ios-input w-full mt-1 p-2.5 text-[13px] !bg-[#1C1C1E]">
+            </div>
+            <div>
+              <label class="text-[11px] text-[#8E8E93]">매월 결제일</label>
+              <input id="subDay" type="number" min="1" max="31" placeholder="15 (일)" class="ios-input w-full mt-1 p-2.5 text-[13px] !bg-[#1C1C1E]">
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-[11px] text-[#8E8E93]">결제 금액 (원)</label>
+              <input id="subAmount" type="number" placeholder="14900" class="ios-input w-full mt-1 p-2.5 text-[13px] !bg-[#1C1C1E]">
+            </div>
+            <div>
+              <label class="text-[11px] text-[#8E8E93]">카테고리</label>
+              <select id="subCategory" class="ios-input w-full mt-1 p-2.5 text-[13px] !bg-[#1C1C1E]">
+                <option value="취미/여가">🎮 취미/여가</option>
+                <option value="식비/간식">🍔 식비/간식</option>
+                <option value="학업/문구">📚 학업/문구</option>
+                <option value="교통">🚌 교통</option>
+                <option value="쇼핑">🛍️ 쇼핑</option>
+                <option value="용돈/기타">💰 용돈/기타</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex gap-2 pt-1">
+            <button type="button" onclick="addSubscription()" class="ios-btn flex-1 bg-[#BF5AF2] text-white text-[12px] font-bold py-2.5 rounded-xl">정기결제 등록</button>
+            <button type="button" onclick="toggleSubModal()" class="ios-btn bg-[#3A3A3C] text-slate-300 text-[12px] font-semibold px-4 py-2.5 rounded-xl">닫기</button>
+          </div>
+        </div>
+
+        <div id="subList" class="mt-3 divide-y divide-white/5 space-y-1"></div>
+        <div id="subTotalSummary" class="mt-3 pt-2.5 border-t border-white/10 flex justify-between items-center text-[12px]">
+          <span class="text-[#8E8E93]">매월 고정 지출 합계</span>
+          <span id="subMonthlyTotal" class="font-bold text-[#BF5AF2]">0원</span>
+        </div>
+      </div>
+
+      <!-- 5. [신규 기능 3] 목표 저축 금고 (버킷리스트 모으기) -->
+      <div class="ios-card p-6 animate-ios-in" style="animation-delay: 0.13s;">
+        <div class="flex justify-between items-center mb-2">
+          <div>
+            <h2 class="text-[15px] font-bold text-white flex items-center gap-1.5">
+              <span>🐷</span>
+              <span id="vaultTitleText">목표 저축 금고</span>
+            </h2>
+            <p class="text-[11px] text-[#8E8E93] mt-0.5">사고 싶은 것이나 목표 금액을 정하고 차곡차곡 모아보세요</p>
+          </div>
+          <button onclick="promptVaultGoal()" class="ios-btn text-[11px] bg-[#30D158]/15 text-[#30D158] border border-[#30D158]/30 px-2.5 py-1 rounded-full font-bold">
+            목표 설정
+          </button>
+        </div>
+
+        <div class="mt-3 p-4 bg-[#2C2C2E]/70 rounded-2xl border border-white/5">
+          <div class="flex justify-between items-baseline mb-1.5">
+            <span id="vaultAmountText" class="text-[18px] font-extrabold text-[#30D158]">0원</span>
+            <span id="vaultTargetText" class="text-[12px] text-[#8E8E93]">목표: 미설정</span>
+          </div>
+          <div class="w-full h-2.5 bg-[#1C1C1E] rounded-full overflow-hidden p-0.5 mb-3">
+            <div id="vaultProgressBar" class="h-full rounded-full bg-[#30D158] transition-all duration-700 ease-out" style="width: 0%"></div>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="modifyVaultSaved(1)" class="ios-btn flex-1 bg-[#30D158]/20 hover:bg-[#30D158]/30 text-[#30D158] text-[12px] font-bold py-2 rounded-xl border border-[#30D158]/30">
+              + 저축 입금하기
+            </button>
+            <button onclick="modifyVaultSaved(-1)" class="ios-btn bg-[#2C2C2E] hover:bg-[#3A3A3C] text-slate-300 text-[12px] font-semibold px-3.5 py-2 rounded-xl border border-white/10">
+              - 출금
+            </button>
+          </div>
+        </div>
+      </div>
+
     </section>
 
     <!-- 오른쪽/하단 컬럼 -->
     <section class="md:col-span-7 space-y-5">
       
-      <!-- 4. 이번 달 지출 분석 도넛 차트 -->
+      <!-- 6. [신규 기능 2] 이번 달 지출 분석 + 전월 대비 비교 + 지출 TOP 3 랭킹 -->
       <div class="ios-card p-6 animate-ios-in" style="animation-delay: 0.14s;">
-        <div class="flex justify-between items-center mb-4">
-          <h2 id="chartMonthTitle" class="text-[16px] font-bold text-white">📊 이번 달 지출 분석</h2>
-          <span class="text-[11px] font-medium text-[#8E8E93] bg-[#2C2C2E] px-2.5 py-1 rounded-full">카테고리 비중</span>
-        </div>
-        
-        <div id="chartEmptyState" class="text-[13px] text-[#8E8E93] py-10 text-center">
-          이번 달 지출 내역을 등록하면 차트가 부드럽게 그려집니다.
+        <div class="flex justify-between items-center mb-3">
+          <h2 id="chartMonthTitle" class="text-[16px] font-bold text-white">📊 이번 달 소비 분석 리포트</h2>
+          <span class="text-[11px] font-medium text-[#8E8E93] bg-[#2C2C2E] px-2.5 py-1 rounded-full">실시간 리포트</span>
         </div>
 
-        <div id="chartContent" class="hidden grid grid-cols-1 sm:grid-cols-2 gap-6 items-center">
-          <div class="relative w-44 h-44 mx-auto">
-            <canvas id="expenseChart"></canvas>
+        <!-- 전월 대비 증감 비교 배너 -->
+        <div id="monthCompareBanner" class="mb-4 p-3.5 rounded-2xl bg-[#2C2C2E]/80 border border-white/5 flex items-center justify-between text-[12px]">
+          <span class="text-[#8E8E93] font-medium">📈 전월 대비 지출 비교</span>
+          <span id="monthCompareText" class="font-bold text-white">계산 중...</span>
+        </div>
+        
+        <div id="chartEmptyState" class="text-[13px] text-[#8E8E93] py-8 text-center">
+          이번 달 지출 내역을 등록하면 차트와 TOP 3 랭킹이 표시됩니다.
+        </div>
+
+        <div id="chartContent" class="hidden space-y-5">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 items-center">
+            <div class="relative w-44 h-44 mx-auto">
+              <canvas id="expenseChart"></canvas>
+            </div>
+            <div id="categoryBreakdown" class="space-y-2 text-[13px]"></div>
           </div>
-          <div id="categoryBreakdown" class="space-y-2.5 text-[13px]"></div>
+
+          <!-- 가장 돈을 많이 쓴 지출 TOP 3 랭킹 -->
+          <div class="pt-4 border-t border-white/10">
+            <h3 class="text-[13px] font-bold text-slate-200 mb-2.5 flex items-center gap-1.5">
+              <span>🏆</span>
+              <span>이번 달 가장 많이 쓴 지출 TOP 3</span>
+            </h3>
+            <div id="top3List" class="grid grid-cols-1 sm:grid-cols-3 gap-2.5"></div>
+          </div>
         </div>
       </div>
 
-      <!-- 5. 내역 검색 & 최근 기록 내역 리스트 -->
+      <!-- 7. [신규 기능 2 & 3] 월간 소비 캘린더 & 무지출 데이 챌린지 스탬프 -->
+      <div class="ios-card p-6 animate-ios-in" style="animation-delay: 0.16s;">
+        <div class="flex justify-between items-center mb-3">
+          <div>
+            <h2 class="text-[16px] font-bold text-white flex items-center gap-1.5">
+              <span>📅</span>
+              <span id="calendarTitle">이번 달 소비 캘린더</span>
+            </h2>
+            <p class="text-[11px] text-[#8E8E93] mt-0.5">지출이 0원인 날에는 무지출 성공 🌱 스탬프가 찍혀요!</p>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span id="noSpendCountBadge" class="text-[11px] bg-[#30D158]/15 text-[#30D158] border border-[#30D158]/30 px-2.5 py-1 rounded-full font-bold">
+              🌱 무지출 0일 성공
+            </span>
+            <button onclick="changeCalendarMonth(-1)" class="ios-btn w-7 h-7 rounded-full bg-[#2C2C2E] text-white text-xs font-bold flex items-center justify-center">◀</button>
+            <button onclick="changeCalendarMonth(1)" class="ios-btn w-7 h-7 rounded-full bg-[#2C2C2E] text-white text-xs font-bold flex items-center justify-center">▶</button>
+          </div>
+        </div>
+
+        <!-- 요일 헤더 -->
+        <div class="grid grid-cols-7 gap-1.5 text-center text-[11px] font-bold text-[#8E8E93] mb-1.5">
+          <div class="text-[#FF453A]">일</div>
+          <div>월</div>
+          <div>화</div>
+          <div>수</div>
+          <div>목</div>
+          <div>금</div>
+          <div class="text-[#0A84FF]">토</div>
+        </div>
+        <!-- 달력 날짜 그리드 -->
+        <div id="calendarGrid" class="grid grid-cols-7 gap-1.5"></div>
+      </div>
+
+      <!-- 8. 내역 검색 & 최근 기록 내역 리스트 -->
       <div class="ios-card p-6 min-h-[420px] animate-ios-in" style="animation-delay: 0.18s;">
         <div class="flex justify-between items-center mb-4">
           <div>
@@ -358,7 +514,7 @@
           </button>
         </div>
 
-        <!-- 검색 결과 합계 요약 배너 (검색어 입력 시 자동 표시) -->
+        <!-- 검색 결과 합계 요약 배너 -->
         <div id="searchSummaryCard" class="hidden mb-4 p-4 rounded-2xl bg-[#2C2C2E]/90 border border-[#0A84FF]/30 animate-ios-in">
           <div class="flex justify-between items-center">
             <div>
@@ -389,13 +545,31 @@
     let isSaving = false;
     let currentSearchQuery = '';
 
+    // 캘린더 조회 연/월 상태
+    const todayInit = new Date();
+    let calYear = todayInit.getFullYear();
+    let calMonth = todayInit.getMonth();
+
+    // 고정 시스템 레코드 ID (기존 DB 스키마 변경 없이 모든 설정을 클라우드와 동기화)
     const BUDGET_SYNC_ID = 9999999999999;
     const BASE_BALANCE_SYNC_ID = 9999999999998;
     const MIN_BALANCE_ALERT_ID = 9999999999997;
+    const SUBSCRIPTIONS_SYNC_ID = 9999999999996;
+    const VAULT_SYNC_ID = 9999999999995;
+
+    const SYSTEM_IDS = new Set([
+      BUDGET_SYNC_ID,
+      BASE_BALANCE_SYNC_ID,
+      MIN_BALANCE_ALERT_ID,
+      SUBSCRIPTIONS_SYNC_ID,
+      VAULT_SYNC_ID
+    ]);
 
     let monthlyBudget = Number(localStorage.getItem('monthly_budget_v5')) || 0;
     let baseBalanceOffset = Number(localStorage.getItem('base_balance_offset_v5')) || 0;
     let minBalanceAlert = Number(localStorage.getItem('min_balance_alert_v5')) || 10000;
+    let subscriptions = JSON.parse(localStorage.getItem('subscriptions_v6') || '[]');
+    let savingsVault = JSON.parse(localStorage.getItem('savings_vault_v6') || '{"name":"목표 저축 금고","target":0,"saved":0}');
     let deletedIds = new Set(JSON.parse(localStorage.getItem('deleted_ledger_ids_v5') || '[]'));
     let chartInstance = null;
 
@@ -431,6 +605,7 @@
     window.onload = () => {
       loadFromLocalStorage();
       deduplicateAndCleanEntries();
+      processAutoSubscriptions();
       buildMemoryBank();
       renderUI();
       initCloud();
@@ -442,6 +617,291 @@
         }
       });
     };
+
+    // --- [신규 기능 1] 정기 결제 관리 및 매월 지정일 자동 등록 로직 ---
+    function toggleSubModal() {
+      document.getElementById('subFormBox').classList.toggle('hidden');
+    }
+
+    async function addSubscription() {
+      const title = document.getElementById('subTitle').value.trim();
+      const day = Number(document.getElementById('subDay').value);
+      const amount = Math.abs(Number(document.getElementById('subAmount').value) || 0);
+      const category = document.getElementById('subCategory').value;
+
+      if (!title || !day || day < 1 || day > 31 || amount <= 0) {
+        alert('정기결제 이름, 결제일(1~31일), 금액을 정확히 입력해 주세요.');
+        return;
+      }
+
+      const newSub = {
+        id: Date.now(),
+        title,
+        day,
+        amount,
+        category,
+        lastAppliedMonth: ''
+      };
+
+      subscriptions.push(newSub);
+      saveSubscriptions();
+
+      document.getElementById('subTitle').value = '';
+      document.getElementById('subDay').value = '';
+      document.getElementById('subAmount').value = '';
+      toggleSubModal();
+
+      await processAutoSubscriptions();
+      renderUI();
+    }
+
+    async function deleteSubscription(id) {
+      if (!confirm('이 정기 결제를 목록에서 삭제할까요?')) return;
+      subscriptions = subscriptions.filter(s => Number(s.id) !== Number(id));
+      saveSubscriptions();
+      renderUI();
+    }
+
+    function saveSubscriptions() {
+      localStorage.setItem('subscriptions_v6', JSON.stringify(subscriptions));
+      if (supabaseClient) {
+        supabaseClient.from('ledger').upsert([{
+          id: SUBSCRIPTIONS_SYNC_ID,
+          title: JSON.stringify(subscriptions),
+          amount: 0,
+          type: 'system',
+          category: 'subscriptions',
+          created_at: new Date().toISOString()
+        }]);
+      }
+    }
+
+    // 이번 달 결제일이 도래했는지 확인하고 자동으로 가계부 내역에 추가 (중복 방지)
+    async function processAutoSubscriptions() {
+      if (!Array.isArray(subscriptions) || subscriptions.length === 0) return;
+
+      const now = new Date();
+      const ymKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const todayDate = now.getDate();
+      let updated = false;
+
+      for (const sub of subscriptions) {
+        if (todayDate >= Number(sub.day) && sub.lastAppliedMonth !== ymKey) {
+          // 이미 이번 달에 동일한 정기결제 항목이 추가되었는지 한 번 더 확인
+          const autoTitle = `[정기] ${sub.title}`;
+          const alreadyExists = entries.some(e => {
+            const d = new Date(e.created_at);
+            const eYm = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            return eYm === ymKey && e.title === autoTitle && Number(e.amount) === Number(sub.amount);
+          });
+
+          if (!alreadyExists) {
+            const payDate = new Date(now.getFullYear(), now.getMonth(), Number(sub.day), 9, 0, 0);
+            const uniqueId = Date.now() + Math.floor(Math.random() * 1000);
+            const dbRecord = {
+              id: uniqueId,
+              title: autoTitle,
+              amount: Math.abs(Number(sub.amount)),
+              type: 'expense',
+              category: sub.category || '취미/여가',
+              created_at: payDate.toISOString()
+            };
+
+            entries.unshift({ ...dbRecord, pendingSync: true });
+            if (supabaseClient) {
+              const { error } = await supabaseClient.from('ledger').insert([dbRecord]);
+              if (!error) entries[0].pendingSync = false;
+            }
+          }
+
+          sub.lastAppliedMonth = ymKey;
+          updated = true;
+        }
+      }
+
+      if (updated) {
+        entries.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        saveToLocalStorage();
+        saveSubscriptions();
+      }
+    }
+
+    function renderSubscriptionsUI() {
+      const listEl = document.getElementById('subList');
+      const totalEl = document.getElementById('subMonthlyTotal');
+      listEl.innerHTML = '';
+
+      if (!subscriptions || subscriptions.length === 0) {
+        listEl.innerHTML = '<p class="text-[12px] text-[#8E8E93] py-3 text-center">등록된 정기 결제가 없습니다.</p>';
+        totalEl.innerText = '0원';
+        return;
+      }
+
+      let monthlySum = 0;
+      subscriptions.sort((a, b) => Number(a.day) - Number(b.day)).forEach(sub => {
+        monthlySum += Number(sub.amount) || 0;
+        const row = document.createElement('div');
+        row.className = 'flex justify-between items-center py-2 text-[13px]';
+        row.innerHTML = `
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] bg-[#BF5AF2]/20 text-[#BF5AF2] px-2 py-0.5 rounded-md font-bold">매월 ${sub.day}일</span>
+            <span class="font-semibold text-white">${sub.title}</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-slate-200">${Number(sub.amount).toLocaleString()}원</span>
+            <button onclick="deleteSubscription(${sub.id})" class="text-[11px] text-[#FF453A] hover:underline">삭제</button>
+          </div>
+        `;
+        listEl.appendChild(row);
+      });
+
+      totalEl.innerText = `${monthlySum.toLocaleString()}원`;
+    }
+
+    // --- [신규 기능 3] 목표 저축 금고 로직 ---
+    function promptVaultGoal() {
+      const nameInput = prompt('🐷 저축 목표 이름을 입력해 주세요 (예: 아이패드 매직키보드, 여행 자금):', savingsVault.name || '목표 저축 금고');
+      if (nameInput === null) return;
+      const targetInput = prompt('🎯 목표 금액은 얼마인가요? (숫자만 입력):', savingsVault.target || 300000);
+      if (targetInput === null) return;
+
+      const targetNum = Number(targetInput.replace(/,/g, '').trim());
+      if (isNaN(targetNum) || targetNum < 0) {
+        alert('올바른 숫자를 입력해 주세요.');
+        return;
+      }
+
+      savingsVault.name = nameInput.trim() || '목표 저축 금고';
+      savingsVault.target = targetNum;
+      saveVault();
+      renderVaultUI();
+    }
+
+    function modifyVaultSaved(direction) {
+      const label = direction > 0 ? '얼마를 저축 금고에 넣을까요?' : '얼마를 저축 금고에서 뺄까요?';
+      const input = prompt(`🐷 ${label} (숫자만 입력):`, '10000');
+      if (input === null) return;
+      const amt = Number(input.replace(/,/g, '').trim());
+      if (isNaN(amt) || amt <= 0) {
+        alert('올바른 금액을 입력해 주세요.');
+        return;
+      }
+
+      savingsVault.saved = Math.max(0, (Number(savingsVault.saved) || 0) + (amt * direction));
+      saveVault();
+      renderVaultUI();
+    }
+
+    function saveVault() {
+      localStorage.setItem('savings_vault_v6', JSON.stringify(savingsVault));
+      if (supabaseClient) {
+        supabaseClient.from('ledger').upsert([{
+          id: VAULT_SYNC_ID,
+          title: JSON.stringify(savingsVault),
+          amount: Number(savingsVault.saved) || 0,
+          type: 'system',
+          category: 'vault',
+          created_at: new Date().toISOString()
+        }]);
+      }
+    }
+
+    function renderVaultUI() {
+      document.getElementById('vaultTitleText').innerText = savingsVault.name || '목표 저축 금고';
+      const saved = Number(savingsVault.saved) || 0;
+      const target = Number(savingsVault.target) || 0;
+
+      document.getElementById('vaultAmountText').innerText = `${saved.toLocaleString()}원 모음`;
+      if (target > 0) {
+        const pct = Math.min(100, Math.round((saved / target) * 100));
+        document.getElementById('vaultTargetText').innerText = `목표 ${target.toLocaleString()}원 (${pct}%)`;
+        document.getElementById('vaultProgressBar').style.width = `${pct}%`;
+      } else {
+        document.getElementById('vaultTargetText').innerText = '우측 위 [목표 설정]을 눌러주세요';
+        document.getElementById('vaultProgressBar').style.width = '0%';
+      }
+    }
+
+    // --- [신규 기능 2 & 3] 월간 소비 캘린더 & 무지출 데이 스탬프 ---
+    function changeCalendarMonth(delta) {
+      calMonth += delta;
+      if (calMonth < 0) {
+        calMonth = 11;
+        calYear--;
+      } else if (calMonth > 11) {
+        calMonth = 0;
+        calYear++;
+      }
+      renderCalendarUI();
+    }
+
+    function renderCalendarUI() {
+      document.getElementById('calendarTitle').innerText = `${calYear}년 ${calMonth + 1}월 소비 캘린더`;
+      const grid = document.getElementById('calendarGrid');
+      grid.innerHTML = '';
+
+      const firstDay = new Date(calYear, calMonth, 1).getDay();
+      const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+      const now = new Date();
+
+      // 일별 수입/지출 집계
+      const dailyMap = {};
+      for (let d = 1; d <= daysInMonth; d++) {
+        dailyMap[d] = { income: 0, expense: 0 };
+      }
+
+      entries.forEach(item => {
+        const dt = new Date(item.created_at || Date.now());
+        if (dt.getFullYear() === calYear && dt.getMonth() === calMonth) {
+          const dayNum = dt.getDate();
+          const amt = Math.abs(Number(item.amount) || 0);
+          if (item.type === 'income') dailyMap[dayNum].income += amt;
+          else dailyMap[dayNum].expense += amt;
+        }
+      });
+
+      // 빈 칸 채우기
+      for (let i = 0; i < firstDay; i++) {
+        const emptyCell = document.createElement('div');
+        grid.appendChild(emptyCell);
+      }
+
+      let noSpendDays = 0;
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const cell = document.createElement('div');
+        const isToday = (now.getFullYear() === calYear && now.getMonth() === calMonth && now.getDate() === d);
+        const isPastOrToday = new Date(calYear, calMonth, d) <= new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        cell.className = `cal-cell p-1.5 flex flex-col justify-between items-center text-center ${isToday ? 'cal-today' : ''}`;
+
+        const exp = dailyMap[d].expense;
+        const inc = dailyMap[d].income;
+
+        let bottomHtml = '';
+        if (exp === 0 && isPastOrToday) {
+          noSpendDays++;
+          bottomHtml = `<span class="text-[10px] text-[#30D158] font-bold">🌱무지출</span>`;
+        } else {
+          if (exp > 0) {
+            const shortExp = exp >= 10000 ? `${(exp / 10000).toFixed(1).replace(/\.0$/, '')}만` : exp.toLocaleString();
+            bottomHtml += `<span class="text-[10px] text-[#FF453A] font-bold block leading-tight">-${shortExp}</span>`;
+          }
+          if (inc > 0) {
+            const shortInc = inc >= 10000 ? `${(inc / 10000).toFixed(1).replace(/\.0$/, '')}만` : inc.toLocaleString();
+            bottomHtml += `<span class="text-[9px] text-[#30D158] font-semibold block leading-tight">+${shortInc}</span>`;
+          }
+        }
+
+        cell.innerHTML = `
+          <span class="text-[11px] font-bold ${isToday ? 'text-[#0A84FF]' : 'text-slate-300'}">${d}</span>
+          <div class="mt-0.5">${bottomHtml}</div>
+        `;
+        grid.appendChild(cell);
+      }
+
+      document.getElementById('noSpendCountBadge').innerText = `🌱 무지출 ${noSpendDays}일 성공`;
+    }
 
     // 실시간 검색 핸들러
     function handleSearchInput(val) {
@@ -558,7 +1018,7 @@
       entries.forEach(item => {
         if (!item || !item.id) return;
         const numId = Number(item.id);
-        if (numId === BUDGET_SYNC_ID || numId === BASE_BALANCE_SYNC_ID || numId === MIN_BALANCE_ALERT_ID || item.type === 'system') return;
+        if (SYSTEM_IDS.has(numId) || item.type === 'system') return;
         if (deletedIds.has(numId)) return;
 
         uniqueMap.set(numId, {
@@ -618,7 +1078,7 @@
         supabaseClient = window.supabase.createClient(url, key);
         const ok = await syncWithCloud(true);
         if (ok) {
-          alert('☁️ 클라우드 연결 완료! 두 기기의 잔액과 설정이 동기화됩니다.');
+          alert('☁️ 클라우드 연결 완료! 모든 데이터와 정기결제·저축금고가 동기화됩니다.');
           toggleConfig();
         }
       } catch (err) {
@@ -673,11 +1133,25 @@
             localStorage.setItem('min_balance_alert_v5', minBalanceAlert);
           }
 
+          const cloudSubs = data.find(item => Number(item.id) === SUBSCRIPTIONS_SYNC_ID);
+          if (cloudSubs && cloudSubs.title) {
+            try {
+              subscriptions = JSON.parse(cloudSubs.title);
+              localStorage.setItem('subscriptions_v6', JSON.stringify(subscriptions));
+            } catch (e) {}
+          }
+
+          const cloudVault = data.find(item => Number(item.id) === VAULT_SYNC_ID);
+          if (cloudVault && cloudVault.title) {
+            try {
+              savingsVault = JSON.parse(cloudVault.title);
+              localStorage.setItem('savings_vault_v6', JSON.stringify(savingsVault));
+            } catch (e) {}
+          }
+
           const cloudEntries = data.filter(item => {
             const numId = Number(item.id);
-            return numId !== BUDGET_SYNC_ID &&
-                   numId !== BASE_BALANCE_SYNC_ID &&
-                   numId !== MIN_BALANCE_ALERT_ID &&
+            return !SYSTEM_IDS.has(numId) &&
                    item.type !== 'system' &&
                    !deletedIds.has(numId);
           });
@@ -706,6 +1180,7 @@
 
           entries = Array.from(finalMap.values()).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
           saveToLocalStorage();
+          await processAutoSubscriptions();
           buildMemoryBank();
           renderUI();
 
@@ -797,7 +1272,7 @@
 
       [...entries].reverse().forEach(item => {
         if (!item.title) return;
-        const key = item.title.trim();
+        const key = item.title.replace(/^[정기]\s*/, '').trim();
         memoryBank[key] = {
           amount: Math.abs(Number(item.amount) || 0),
           type: item.type,
@@ -1111,13 +1586,27 @@
       }
     }
 
-    function updateChartUI(categoryTotals, thisMonthExpense) {
+    function updateChartAndReportUI(categoryTotals, thisMonthExpense, lastMonthExpense, titleTotals) {
       const emptyState = document.getElementById('chartEmptyState');
       const chartContent = document.getElementById('chartContent');
       const breakdownEl = document.getElementById('categoryBreakdown');
+      const compareTextEl = document.getElementById('monthCompareText');
+      const top3ListEl = document.getElementById('top3List');
 
       const now = new Date();
-      document.getElementById('chartMonthTitle').innerText = `📊 ${now.getMonth() + 1}월 지출 분석`;
+      document.getElementById('chartMonthTitle').innerText = `📊 ${now.getMonth() + 1}월 소비 분석 리포트`;
+
+      // 1. 전월 대비 지출 비교 계산
+      if (lastMonthExpense === 0) {
+        compareTextEl.innerHTML = `<span class="text-[#8E8E93]">지난달 기록 없음 (이번 달: ${thisMonthExpense.toLocaleString()}원)</span>`;
+      } else {
+        const diff = thisMonthExpense - lastMonthExpense;
+        if (diff <= 0) {
+          compareTextEl.innerHTML = `<span class="text-[#30D158]">지난달보다 ${Math.abs(diff).toLocaleString()}원 덜 썼어요! 👏</span>`;
+        } else {
+          compareTextEl.innerHTML = `<span class="text-[#FF453A]">지난달보다 ${diff.toLocaleString()}원 더 썼어요 ⚠️</span>`;
+        }
+      }
 
       if (thisMonthExpense <= 0) {
         emptyState.classList.remove('hidden');
@@ -1193,21 +1682,44 @@
         `;
         breakdownEl.appendChild(item);
       });
+
+      // 2. 지출 TOP 3 랭킹 렌더링
+      top3ListEl.innerHTML = '';
+      const medals = ['🥇 1위', '🥈 2위', '🥉 3위'];
+      const top3Items = Object.entries(titleTotals)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3);
+
+      top3Items.forEach(([title, sum], idx) => {
+        const card = document.createElement('div');
+        card.className = 'p-3 rounded-2xl bg-[#2C2C2E]/70 border border-white/5 flex flex-col justify-between';
+        card.innerHTML = `
+          <span class="text-[11px] font-bold text-[#FF9F0A]">${medals[idx]}</span>
+          <span class="text-[13px] font-bold text-white truncate mt-1">${title}</span>
+          <span class="text-[13px] font-extrabold text-[#FF453A] mt-0.5">${sum.toLocaleString()}원</span>
+        `;
+        top3ListEl.appendChild(card);
+      });
     }
 
     function renderUI() {
       let totalAllIncome = 0, totalAllExpense = 0;
       let thisMonthIncome = 0, thisMonthExpense = 0;
+      let lastMonthExpense = 0;
       const categoryTotals = {};
+      const titleTotals = {};
 
       const now = new Date();
       const currentYear = now.getFullYear();
       const currentMonth = now.getMonth();
+      const lastMonthDate = new Date(currentYear, currentMonth - 1, 1);
+      const lastYear = lastMonthDate.getFullYear();
+      const lastMonth = lastMonthDate.getMonth();
 
-      // 1. 전체 잔액 및 당월 차트 계산은 검색어와 무관하게 전체 내역 기준으로 유지
       entries.forEach(item => {
         const itemDate = new Date(item.created_at || Date.now());
         const isThisMonth = itemDate.getFullYear() === currentYear && itemDate.getMonth() === currentMonth;
+        const isLastMonth = itemDate.getFullYear() === lastYear && itemDate.getMonth() === lastMonth;
         const amt = Math.abs(Number(item.amount) || 0);
 
         if (item.type === 'income') {
@@ -1218,11 +1730,15 @@
           if (isThisMonth) {
             thisMonthExpense += amt;
             categoryTotals[item.category] = (categoryTotals[item.category] || 0) + amt;
+            const cleanKey = (item.title || '기타').trim();
+            titleTotals[cleanKey] = (titleTotals[cleanKey] || 0) + amt;
+          } else if (isLastMonth) {
+            lastMonthExpense += amt;
           }
         }
       });
 
-      // 2. 검색어 필터링 및 검색된 항목의 사용 금액 합계 계산
+      // 검색어 필터링 및 합계 계산
       const queryLower = currentSearchQuery.toLowerCase();
       const filteredEntries = currentSearchQuery
         ? entries.filter(item =>
@@ -1259,7 +1775,6 @@
         searchSummaryCard.classList.add('hidden');
       }
 
-      // 3. 리스트 렌더링
       const listEl = document.getElementById('entryList');
       listEl.innerHTML = '';
 
@@ -1330,7 +1845,10 @@
       }
 
       updateBudgetUI(thisMonthExpense);
-      updateChartUI(categoryTotals, thisMonthExpense);
+      updateChartAndReportUI(categoryTotals, thisMonthExpense, lastMonthExpense, titleTotals);
+      renderSubscriptionsUI();
+      renderVaultUI();
+      renderCalendarUI();
     }
   </script>
 </body>
