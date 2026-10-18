@@ -3,12 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <!-- iOS/iPadOS 홈 화면 앱(PWA) 다크모드 설정 -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="가계부">
-  <title>스마트 가계부 iOS Dark v5.0</title>
-  <!-- Tailwind CSS, 최신 Supabase SDK, Chart.js -->
+  <title>스마트 가계부 iOS Dark v5.1</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -34,7 +32,6 @@
       overflow-x: hidden;
     }
 
-    /* iOS 다크 반투명 블러 헤더 */
     .ios-glass-header {
       background: rgba(28, 28, 30, 0.75);
       backdrop-filter: saturate(180%) blur(24px);
@@ -42,7 +39,6 @@
       border-bottom: 0.5px solid rgba(255, 255, 255, 0.1);
     }
 
-    /* iOS 다크 카드 */
     .ios-card {
       background: var(--ios-card);
       border-radius: 24px;
@@ -51,7 +47,6 @@
       transition: transform 0.35s var(--spring-easing), border-color 0.3s ease;
     }
 
-    /* 자연스러운 애플 스프링 터치 반응 */
     .ios-btn {
       transition: transform 0.2s var(--spring-easing), opacity 0.2s ease, background-color 0.2s ease;
       user-select: none;
@@ -61,7 +56,6 @@
       opacity: 0.8;
     }
 
-    /* 다크 입력창 */
     .ios-input {
       background-color: var(--ios-card-elevated);
       color: #FFFFFF;
@@ -79,7 +73,6 @@
       outline: none;
     }
 
-    /* iOS 다크 세그먼트 컨트롤 */
     .ios-segment-bg {
       background-color: #2C2C2E;
       border-radius: 12px;
@@ -100,30 +93,17 @@
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
     }
 
-    /* 등장 애니메이션 */
     @keyframes iosSlideUp {
-      from {
-        opacity: 0;
-        transform: translateY(12px) scale(0.99);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-      }
+      from { opacity: 0; transform: translateY(12px) scale(0.99); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
     }
     .animate-ios-in {
       animation: iosSlideUp 0.42s var(--spring-easing) both;
     }
 
     @keyframes iosItemAppear {
-      from {
-        opacity: 0;
-        transform: translateY(-6px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: translateY(0); }
     }
     .ios-list-item {
       animation: iosItemAppear 0.28s var(--spring-easing) both;
@@ -136,33 +116,37 @@
 </head>
 <body class="min-h-screen pb-24">
 
-  <!-- iOS 다크 블러 상단 바 -->
   <header class="ios-glass-header pt-11 pb-3.5 px-5 sticky top-0 z-30">
     <div class="max-w-5xl mx-auto flex justify-between items-center">
       <div>
         <div class="flex items-center gap-2">
           <h1 class="text-[22px] font-extrabold tracking-tight text-white">나의 가계부</h1>
-          <span class="text-[10px] bg-[#0A84FF]/20 text-[#0A84FF] px-2 py-0.5 rounded-full font-bold border border-[#0A84FF]/30">Dark v5.0</span>
+          <span class="text-[10px] bg-[#0A84FF]/20 text-[#0A84FF] px-2 py-0.5 rounded-full font-bold border border-[#0A84FF]/30">v5.1 알림탑재</span>
         </div>
         <div class="flex items-center gap-1.5 mt-0.5">
           <span id="syncDot" class="w-2 h-2 rounded-full bg-[#30D158] inline-block transition-colors duration-300"></span>
           <p id="syncStatus" class="text-[12px] text-[#8E8E93] font-medium">기기 보호 저장 중</p>
         </div>
       </div>
-      <button onclick="toggleConfig()" class="ios-btn text-[13px] bg-[#2C2C2E] hover:bg-[#3A3A3C] text-[#0A84FF] px-3.5 py-2 rounded-full font-semibold border border-white/10 flex items-center gap-1">
-        <span>⚙️</span>
-        <span>연동 설정</span>
-      </button>
+      <div class="flex items-center gap-2">
+        <button id="notifBtn" onclick="requestNotificationPermission()" class="ios-btn text-[12px] bg-[#2C2C2E] hover:bg-[#3A3A3C] text-[#FF9F0A] px-3 py-2 rounded-full font-semibold border border-white/10 flex items-center gap-1">
+          <span>🔔</span>
+          <span id="notifBtnText">알림 켜기</span>
+        </button>
+        <button onclick="toggleConfig()" class="ios-btn text-[12px] bg-[#2C2C2E] hover:bg-[#3A3A3C] text-[#0A84FF] px-3 py-2 rounded-full font-semibold border border-white/10 flex items-center gap-1">
+          <span>⚙️</span>
+          <span>연동</span>
+        </button>
+      </div>
     </div>
   </header>
 
-  <!-- 클라우드 연동 설정 모달 -->
   <div id="configModal" class="hidden max-w-5xl mx-auto mt-3 px-4">
     <div class="ios-card p-5 border border-[#0A84FF]/40 animate-ios-in">
       <div class="flex justify-between items-start mb-2">
         <div>
           <h2 class="text-[15px] font-bold text-white">☁️ 아이폰 ↔ 아이패드 실시간 연동 설정</h2>
-          <p class="text-[12px] text-[#8E8E93] mt-0.5">Supabase URL과 Key를 입력하면 두 기기 잔액이 오차 없이 동기화됩니다.</p>
+          <p class="text-[12px] text-[#8E8E93] mt-0.5">Supabase URL과 Key를 입력하면 잔액과 알림 설정이 동기화됩니다.</p>
         </div>
       </div>
       <div class="space-y-3 mt-3">
@@ -183,22 +167,30 @@
     </div>
   </div>
 
-  <!-- 메인 레이아웃 -->
   <main class="max-w-5xl mx-auto mt-5 px-4 grid grid-cols-1 md:grid-cols-12 gap-5">
     
-    <!-- 왼쪽/상단 컬럼 -->
     <section class="md:col-span-5 space-y-5">
       
-      <!-- 1. 현재 내 통장 잔고 & 목표 예산 카드 -->
       <div class="ios-card p-6 animate-ios-in" style="animation-delay: 0.02s;">
         <div class="flex justify-between items-center">
           <span class="text-[12px] font-semibold text-[#8E8E93]">현재 내 통장 잔액</span>
-          <button onclick="adjustRealBalance()" class="ios-btn text-[11px] bg-[#0A84FF]/15 text-[#0A84FF] border border-[#0A84FF]/30 px-2.5 py-1 rounded-full font-bold">
-            🏦 실제 통장 잔고 맞추기
-          </button>
+          <div class="flex gap-1.5">
+            <button onclick="promptMinBalanceAlert()" class="ios-btn text-[11px] bg-[#FF9F0A]/15 text-[#FF9F0A] border border-[#FF9F0A]/30 px-2 py-1 rounded-full font-bold">
+              ⚠️ 부족 알림 기준
+            </button>
+            <button onclick="adjustRealBalance()" class="ios-btn text-[11px] bg-[#0A84FF]/15 text-[#0A84FF] border border-[#0A84FF]/30 px-2.5 py-1 rounded-full font-bold">
+              🏦 통장 맞춤
+            </button>
+          </div>
         </div>
         <div id="totalBalance" class="text-[34px] font-extrabold text-white mt-1.5 tracking-tight leading-tight">0원</div>
-        <p id="baseBalanceHint" class="text-[11px] text-[#8E8E93] mt-0.5">우측 위 버튼을 눌러 현재 실제 통장 잔고와 똑같이 맞추세요</p>
+        
+        <div id="lowBalanceWarningBanner" class="hidden mt-2 p-2.5 bg-[#FF453A]/15 border border-[#FF453A]/30 rounded-xl flex items-center justify-between">
+          <span class="text-xs text-[#FF453A] font-bold">🚨 잔액 부족 경고 수준 도달!</span>
+          <span id="lowBalanceDetail" class="text-[11px] text-[#FF453A]"></span>
+        </div>
+
+        <p id="baseBalanceHint" class="text-[11px] text-[#8E8E93] mt-1.5">우측 위 버튼으로 실제 잔액 및 부족 알림 기준을 설정하세요</p>
         
         <div class="grid grid-cols-2 gap-3 mt-4 p-3.5 bg-[#2C2C2E]/70 rounded-2xl border border-white/5">
           <div>
@@ -217,7 +209,6 @@
           </div>
         </div>
 
-        <!-- 이번 달 목표 예산 프로그레스 -->
         <div class="mt-5 pt-4 border-t border-white/10">
           <div class="flex justify-between items-center mb-1.5">
             <span class="text-[13px] font-bold text-slate-200">🎯 이번 달 목표 지출 예산</span>
@@ -234,7 +225,6 @@
         </div>
       </div>
 
-      <!-- 2. 한 줄 빠른 입력 바 -->
       <div class="ios-card p-5 border border-[#0A84FF]/25 animate-ios-in" style="animation-delay: 0.06s;">
         <div class="flex justify-between items-center mb-2">
           <div class="flex items-center gap-1.5">
@@ -244,7 +234,7 @@
           <span class="text-[11px] text-[#0A84FF] font-medium">용돈 2000 · 밥4000</span>
         </div>
         <form onsubmit="handleQuickSubmit(event)" class="flex gap-2">
-          <input id="quickInput" type="text" placeholder="내역과 금액 입력 (예: 메가커피 2000)"
+          <input id="quickInput" type="text" placeholder="내역과 금액 입력 (예: 커피 4500)"
             oninput="parseQuickInput(this.value)"
             class="ios-input flex-1 px-3.5 py-3 text-[14px]">
           <button type="submit" class="ios-btn bg-[#0A84FF] text-white font-semibold px-4 rounded-[14px] text-[13px] shrink-0 shadow-sm">
@@ -254,7 +244,6 @@
         <p id="quickPreview" class="text-[12px] text-[#0A84FF] mt-2.5 hidden font-semibold bg-[#0A84FF]/10 px-3 py-1.5 rounded-xl border border-[#0A84FF]/20"></p>
       </div>
 
-      <!-- 3. 상세 작성 및 수정 카드 (메모리 시스템 탑재) -->
       <div id="formCard" class="ios-card p-6 animate-ios-in" style="animation-delay: 0.1s;">
         <div class="flex justify-between items-center mb-4">
           <h2 id="formTitle" class="text-[16px] font-bold text-white">내역 상세 기록</h2>
@@ -264,7 +253,6 @@
         </div>
 
         <form id="ledgerForm" onsubmit="saveEntry(event)" class="space-y-4">
-          <!-- iOS 세그먼트 컨트롤 -->
           <div>
             <input id="typeInput" type="hidden" value="expense">
             <div class="ios-segment-bg">
@@ -283,7 +271,6 @@
               oninput="handleTitleInput(this.value)"
               class="ios-input w-full mt-1 p-3.5 text-[14px]">
             <datalist id="memoryList"></datalist>
-            <!-- 원터치 기억 칩 영역 -->
             <div id="memoryChips" class="flex flex-wrap gap-1.5 mt-2.5"></div>
           </div>
 
@@ -318,10 +305,8 @@
       </div>
     </section>
 
-    <!-- 오른쪽/하단 컬럼: 차트 & 내역 리스트 -->
     <section class="md:col-span-7 space-y-5">
       
-      <!-- 4. 카테고리별 지출 비율 도넛 차트 카드 -->
       <div class="ios-card p-6 animate-ios-in" style="animation-delay: 0.14s;">
         <div class="flex justify-between items-center mb-4">
           <h2 id="chartMonthTitle" class="text-[16px] font-bold text-white">📊 이번 달 지출 분석</h2>
@@ -340,7 +325,6 @@
         </div>
       </div>
 
-      <!-- 5. 최근 내역 리스트 카드 -->
       <div class="ios-card p-6 min-h-[380px] animate-ios-in" style="animation-delay: 0.18s;">
         <div class="flex justify-between items-center mb-4">
           <div>
@@ -367,18 +351,18 @@
     let isSyncing = false;
     let isSaving = false;
 
-    // 고정 시스템 레코드 ID (예산 및 기초 통장 잔고 보정값)
     const BUDGET_SYNC_ID = 9999999999999;
     const BASE_BALANCE_SYNC_ID = 9999999999998;
+    const MIN_BALANCE_ALERT_ID = 9999999999997;
 
-    let monthlyBudget = Number(localStorage.getItem('monthly_budget_v5')) || Number(localStorage.getItem('monthly_budget_v3')) || 0;
+    let monthlyBudget = Number(localStorage.getItem('monthly_budget_v5')) || 0;
     let baseBalanceOffset = Number(localStorage.getItem('base_balance_offset_v5')) || 0;
+    let minBalanceAlert = Number(localStorage.getItem('min_balance_alert_v5')) || 10000; // 기본 1만원 미만 시 경고
     let deletedIds = new Set(JSON.parse(localStorage.getItem('deleted_ledger_ids_v5') || '[]'));
     let chartInstance = null;
 
     const STORAGE_KEY = 'smart_ledger_entries_v5';
 
-    // iOS 다크모드 네온 팔레트 컬러
     const CATEGORY_COLORS = {
       '식비/간식': '#FF453A',
       '학업/문구': '#0A84FF',
@@ -412,14 +396,82 @@
       buildMemoryBank();
       renderUI();
       initCloud();
+      checkNotifStatus();
 
-      // 화면을 다시 켤 때 자동으로 최신 클라우드 상태 불러오기
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible' && supabaseClient) {
           syncWithCloud(false);
         }
       });
     };
+
+    function checkNotifStatus() {
+      if (!('Notification' in window)) {
+        document.getElementById('notifBtn').classList.add('hidden');
+        return;
+      }
+      if (Notification.permission === 'granted') {
+        document.getElementById('notifBtnText').innerText = '알림 켜짐';
+        document.getElementById('notifBtn').classList.replace('text-[#FF9F0A]', 'text-[#30D158]');
+      }
+    }
+
+    async function requestNotificationPermission() {
+      if (!('Notification' in window)) {
+        alert('현재 기기 환경에서는 시스템 푸시 알림을 지원하지 않습니다. 화면 팝업 경고로 대체됩니다.');
+        return;
+      }
+      const perm = await Notification.requestPermission();
+      if (perm === 'granted') {
+        document.getElementById('notifBtnText').innerText = '알림 켜짐';
+        document.getElementById('notifBtn').classList.replace('text-[#FF9F0A]', 'text-[#30D158]');
+        new Notification('나의 가계부 알림 연동', {
+          body: `잔액이 ${minBalanceAlert.toLocaleString()}원 이하로 내려가면 즉시 경고 알림을 보냅니다.`,
+          icon: 'https://cdn-icons-png.flaticon.com/512/3135/3135706.png'
+        });
+      } else {
+        alert('알림 권한이 허용되지 않았습니다. 아이폰 설정 > Safari/웹앱 > 알림에서 허용할 수 있습니다.');
+      }
+    }
+
+    function triggerLowBalanceAlert(currentBal) {
+      const msg = `⚠️ 잔액 부족 주의!\n현재 잔액이 ${currentBal.toLocaleString()}원으로, 설정한 알림 기준(${minBalanceAlert.toLocaleString()}원) 이하입니다.`;
+      
+      // 1. 브라우저 시스템 알림
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('🚨 가계부 잔액 부족 경고', {
+          body: `현재 통장 잔액: ${currentBal.toLocaleString()}원 (기준치 이하)`,
+          icon: 'https://cdn-icons-png.flaticon.com/512/3135/3135706.png'
+        });
+      }
+
+      // 2. 화면 내 팝업 경고창
+      setTimeout(() => alert(msg), 150);
+    }
+
+    async function promptMinBalanceAlert() {
+      const input = prompt('⚠️ 잔액이 얼마 이하일 때 부족 경고 알림을 보낼까요? (숫자만 입력):', minBalanceAlert);
+      if (input === null) return;
+      const num = Number(input.replace(/,/g, '').trim());
+      if (isNaN(num) || num < 0) {
+        alert('올바른 금액을 입력해 주세요.');
+        return;
+      }
+      minBalanceAlert = num;
+      localStorage.setItem('min_balance_alert_v5', minBalanceAlert);
+
+      if (supabaseClient) {
+        await supabaseClient.from('ledger').upsert([{
+          id: MIN_BALANCE_ALERT_ID,
+          title: '__SYSTEM_MIN_ALERT__',
+          amount: minBalanceAlert,
+          type: 'system',
+          category: 'system',
+          created_at: new Date().toISOString()
+        }]);
+      }
+      renderUI();
+    }
 
     function setEntryType(type) {
       document.getElementById('typeInput').value = type;
@@ -436,31 +488,22 @@
 
     function loadFromLocalStorage() {
       const rawV5 = localStorage.getItem(STORAGE_KEY);
-      const rawV3 = localStorage.getItem('smart_ledger_entries_v3');
-      const rawV2 = localStorage.getItem('local_ledger_secure');
+      const rawAlert = localStorage.getItem('min_balance_alert_v5');
+      if (rawAlert) minBalanceAlert = Number(rawAlert);
 
       try {
-        if (rawV5) {
-          entries = JSON.parse(rawV5);
-        } else if (rawV3) {
-          entries = JSON.parse(rawV3);
-        } else if (rawV2) {
-          entries = JSON.parse(rawV2);
-        } else {
-          entries = [];
-        }
+        entries = rawV5 ? JSON.parse(rawV5) : [];
       } catch (e) {
         entries = [];
       }
     }
 
-    // 중복 데이터 및 이미 삭제된 좀비 데이터를 완벽하게 제거하여 잔액이 불어나는 현상 방지
     function deduplicateAndCleanEntries() {
       const uniqueMap = new Map();
       entries.forEach(item => {
         if (!item || !item.id) return;
         const numId = Number(item.id);
-        if (numId === BUDGET_SYNC_ID || numId === BASE_BALANCE_SYNC_ID || item.type === 'system') return;
+        if (numId === BUDGET_SYNC_ID || numId === BASE_BALANCE_SYNC_ID || numId === MIN_BALANCE_ALERT_ID || item.type === 'system') return;
         if (deletedIds.has(numId)) return;
 
         uniqueMap.set(numId, {
@@ -476,7 +519,6 @@
 
     function saveToLocalStorage() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-      localStorage.setItem('smart_ledger_entries_v3', JSON.stringify(entries));
       localStorage.setItem('deleted_ledger_ids_v5', JSON.stringify(Array.from(deletedIds)));
     }
 
@@ -521,7 +563,7 @@
         supabaseClient = window.supabase.createClient(url, key);
         const ok = await syncWithCloud(true);
         if (ok) {
-          alert('☁️ 클라우드 연결 완료! 이제 아이폰과 아이패드 잔액이 오차 없이 동기화됩니다.');
+          alert('☁️ 클라우드 연결 완료! 두 기기의 잔액과 설정이 동기화됩니다.');
           toggleConfig();
         }
       } catch (err) {
@@ -530,19 +572,16 @@
       }
     }
 
-    // 핵심: 잔액이 혼자 왔다 갔다 하지 않도록 클라우드를 단일 기준으로 정밀 동기화
     async function syncWithCloud(showError = false) {
       if (!supabaseClient || isSyncing) return false;
       isSyncing = true;
       const errBox = document.getElementById('cloudErrorMsg');
 
       try {
-        // 1. 먼저 삭제 목록(deletedIds)에 있는 항목이 클라우드에 남아있다면 클라우드에서 확실히 제거
         if (deletedIds.size > 0) {
           await supabaseClient.from('ledger').delete().in('id', Array.from(deletedIds));
         }
 
-        // 2. 클라우드 전체 데이터 조회
         const { data, error } = await supabaseClient
           .from('ledger')
           .select('*')
@@ -550,9 +589,9 @@
 
         if (error) {
           document.getElementById('syncDot').className = 'w-2 h-2 rounded-full bg-[#FF9F0A] inline-block';
-          document.getElementById('syncStatus').innerText = '오프라인 보호 모드 (기기 저장됨)';
+          document.getElementById('syncStatus').innerText = '오프라인 보호 모드';
           if (showError) {
-            errBox.innerText = `클라우드 연결 실패 (${error.message}). Key를 확인해 주세요.`;
+            errBox.innerText = `클라우드 연결 실패 (${error.message}).`;
             errBox.classList.remove('hidden');
           }
           isSyncing = false;
@@ -560,14 +599,12 @@
         }
 
         if (Array.isArray(data)) {
-          // 시스템 레코드 1: 목표 예산 동기화
           const cloudBudget = data.find(item => Number(item.id) === BUDGET_SYNC_ID);
           if (cloudBudget) {
             monthlyBudget = Number(cloudBudget.amount) || 0;
             localStorage.setItem('monthly_budget_v5', monthlyBudget);
           }
 
-          // 시스템 레코드 2: 기초 통장 잔고 보정값 동기화 (양수/음수 부호는 category 필드에 보관)
           const cloudBase = data.find(item => Number(item.id) === BASE_BALANCE_SYNC_ID);
           if (cloudBase) {
             const sign = cloudBase.category === 'negative' ? -1 : 1;
@@ -575,25 +612,28 @@
             localStorage.setItem('base_balance_offset_v5', baseBalanceOffset);
           }
 
-          // 일반 가계부 내역 필터링
+          const cloudAlert = data.find(item => Number(item.id) === MIN_BALANCE_ALERT_ID);
+          if (cloudAlert) {
+            minBalanceAlert = Number(cloudAlert.amount) || 10000;
+            localStorage.setItem('min_balance_alert_v5', minBalanceAlert);
+          }
+
           const cloudEntries = data.filter(item => {
             const numId = Number(item.id);
             return numId !== BUDGET_SYNC_ID &&
                    numId !== BASE_BALANCE_SYNC_ID &&
+                   numId !== MIN_BALANCE_ALERT_ID &&
                    item.type !== 'system' &&
                    !deletedIds.has(numId);
           });
 
           const cloudIdSet = new Set(cloudEntries.map(i => Number(i.id)));
-
-          // 오프라인 상태에서 새로 작성해 아직 클라우드에 올라가지 않은 항목만 업로드
           const unuploadedLocal = entries.filter(localItem => localItem.pendingSync === true && !cloudIdSet.has(Number(localItem.id)));
           if (unuploadedLocal.length > 0) {
             const cleanUpload = unuploadedLocal.map(({ pendingSync, ...rest }) => rest);
             await supabaseClient.from('ledger').upsert(cleanUpload);
           }
 
-          // 클라우드 기준 + 방금 업로드한 항목만 정확히 유지 (이미 삭제된 옛날 데이터가 부활하는 현상 원천 차단)
           const finalMap = new Map();
           [...cloudEntries, ...unuploadedLocal].forEach(item => {
             const numId = Number(item.id);
@@ -615,7 +655,7 @@
           renderUI();
 
           document.getElementById('syncDot').className = 'w-2 h-2 rounded-full bg-[#0A84FF] inline-block';
-          document.getElementById('syncStatus').innerText = '아이폰·아이패드 실시간 동기화 완료';
+          document.getElementById('syncStatus').innerText = '실시간 동기화 켜짐';
           isSyncing = false;
           return true;
         }
@@ -626,13 +666,12 @@
       return false;
     }
 
-    // 실제 통장 잔고와 1원 단위까지 똑같이 맞추는 기능
     async function adjustRealBalance() {
       const netFlow = getNetEntriesFlow();
       const currentDisplayedBalance = baseBalanceOffset + netFlow;
 
       const input = prompt(
-        `🏦 현재 실제 통장(계좌)에 찍혀있는 잔액이 얼마인가요?\n\n숫자를 입력하시면 현재 가계부 잔액이 실제 통장 잔고와 정확히 일치하도록 맞춰집니다.\n(이후 지출/수입을 적으면 이 금액에서 정확히 계산됩니다!)`,
+        `🏦 현재 실제 통장(계좌)에 찍혀있는 잔액을 입력하세요:`,
         currentDisplayedBalance
       );
 
@@ -643,7 +682,6 @@
         return;
       }
 
-      // 목표 실제 잔액 = baseBalanceOffset + netFlow 이므로, baseBalanceOffset = targetRealBalance - netFlow
       baseBalanceOffset = targetRealBalance - netFlow;
       localStorage.setItem('base_balance_offset_v5', baseBalanceOffset);
 
@@ -672,7 +710,7 @@
     }
 
     async function promptBudget() {
-      const input = prompt('🎯 이번 달 목표 지출 예산을 입력해 주세요 (숫자만 입력, 0 입력 시 해제):', monthlyBudget || 100000);
+      const input = prompt('🎯 이번 달 목표 지출 예산을 입력해 주세요 (숫자만 입력):', monthlyBudget || 100000);
       if (input === null) return;
       const num = Number(input.replace(/,/g, '').trim());
       if (isNaN(num) || num < 0) {
@@ -819,7 +857,7 @@
       const val = document.getElementById('quickInput').value;
       const parsed = analyzeTextAndAmount(val);
       if (!parsed || parsed.amount === null) {
-        alert('사용처와 금액을 함께 입력해 주세요! (예: 용돈 2000, 밥4000)');
+        alert('사용처와 금액을 함께 입력해 주세요! (예: 커피 4500)');
         return;
       }
       editingId = null;
@@ -852,7 +890,6 @@
       else badge.classList.add('hidden');
     }
 
-    // 중복 클릭 방지 잠금(isSaving) 및 정확한 금액 저장
     async function saveEntry(e) {
       if (e && e.preventDefault) e.preventDefault();
       if (isSaving) return;
@@ -890,7 +927,6 @@
           }
           cancelEdit();
         } else {
-          // 고유 숫자 ID 생성
           const uniqueId = Date.now() + Math.floor(Math.random() * 100);
           const dbRecord = {
             id: uniqueId,
@@ -920,6 +956,14 @@
 
         buildMemoryBank();
         renderUI();
+
+        // 지출 등록 후 새로운 잔액이 기준 미만이면 즉시 알림 트리거
+        if (type === 'expense') {
+          const curBal = baseBalanceOffset + getNetEntriesFlow();
+          if (curBal <= minBalanceAlert) {
+            triggerLowBalanceAlert(curBal);
+          }
+        }
       } finally {
         isSaving = false;
       }
@@ -956,7 +1000,6 @@
       document.getElementById('memoryBadge').classList.add('hidden');
     }
 
-    // 삭제 시 deletedIds에 영구 기록하여 다시 부활하지 못하도록 차단
     async function deleteEntry(id) {
       if (!confirm('이 내역을 삭제할까요?')) return;
       const numId = Number(id);
@@ -1170,10 +1213,20 @@
       document.getElementById('totalExpense').innerText = `-${thisMonthExpense.toLocaleString()}원`;
       document.getElementById('totalBalance').innerText = `${finalBalance.toLocaleString()}원`;
 
-      if (baseBalanceOffset !== 0) {
-        document.getElementById('baseBalanceHint').innerText = `실제 통장 잔고 기준으로 보정됨 (기초 잔고 반영 완료)`;
+      // 잔액 부족 상태 배너 표시
+      const warnBanner = document.getElementById('lowBalanceWarningBanner');
+      const warnDetail = document.getElementById('lowBalanceDetail');
+      if (finalBalance <= minBalanceAlert) {
+        warnBanner.classList.remove('hidden');
+        warnDetail.innerText = `기준치(${minBalanceAlert.toLocaleString()}원) 이하`;
       } else {
-        document.getElementById('baseBalanceHint').innerText = `우측 위 [실제 통장 잔고 맞추기]로 내 계좌 잔액과 일치시킬 수 있어요`;
+        warnBanner.classList.add('hidden');
+      }
+
+      if (baseBalanceOffset !== 0) {
+        document.getElementById('baseBalanceHint').innerText = `실제 통장 잔고 기준으로 보정됨 (알림 기준: ${minBalanceAlert.toLocaleString()}원 이하)`;
+      } else {
+        document.getElementById('baseBalanceHint').innerText = `알림 기준치: ${minBalanceAlert.toLocaleString()}원 이하 (우측 위에서 변경 가능)`;
       }
 
       updateBudgetUI(thisMonthExpense);
