@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="가계부">
-  <title>스마트 가계부 iOS Dark v6.2 Pro</title>
+  <title>스마트 가계부 iOS Dark v6.3 Pro</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -135,7 +135,7 @@
       <div>
         <div class="flex items-center gap-2">
           <h1 class="text-[22px] font-extrabold tracking-tight text-white">나의 가계부</h1>
-          <span class="text-[10px] bg-[#BF5AF2]/20 text-[#BF5AF2] px-2 py-0.5 rounded-full font-bold border border-[#BF5AF2]/30">v6.2 Pro</span>
+          <span class="text-[10px] bg-[#BF5AF2]/20 text-[#BF5AF2] px-2 py-0.5 rounded-full font-bold border border-[#BF5AF2]/30">v6.3 Pro</span>
         </div>
         <div class="flex items-center gap-1.5 mt-0.5">
           <span id="syncDot" class="w-2 h-2 rounded-full bg-[#30D158] inline-block transition-colors duration-300"></span>
@@ -254,12 +254,12 @@
     <!-- 왼쪽/상단 컬럼 -->
     <section class="md:col-span-5 space-y-5">
       
-      <!-- 1. 통장 잔액 & 예산 카드 -->
+      <!-- 1. 통장 잔액 & 2단계 부족 알림(3,000원 근접 주의 + 기준 이하 경고) 카드 -->
       <div class="ios-card p-6 animate-ios-in" style="animation-delay: 0.02s;">
         <div class="flex justify-between items-center">
           <span class="text-[12px] font-semibold text-[#8E8E93]">현재 내 통장 잔액</span>
           <div class="flex gap-1.5">
-            <button onclick="promptMinBalanceAlert()" class="ios-btn text-[11px] bg-[#FF9F0A]/15 text-[#FF9F0A] border border-[#FF9F0A]/30 px-2 py-1 rounded-full font-bold">
+            <button onclick="promptMinBalanceAlert()" class="ios-btn text-[11px] bg-[#FF9F0A]/15 text-[#FF9F0A] border border-[#FF9F0A]/30 px-2.5 py-1 rounded-full font-bold">
               ⚠️ 부족 알림 기준
             </button>
             <button onclick="adjustRealBalance()" class="ios-btn text-[11px] bg-[#0A84FF]/15 text-[#0A84FF] border border-[#0A84FF]/30 px-2.5 py-1 rounded-full font-bold">
@@ -269,12 +269,13 @@
         </div>
         <div id="totalBalance" class="text-[34px] font-extrabold text-white mt-1.5 tracking-tight leading-tight">0원</div>
         
-        <div id="lowBalanceWarningBanner" class="hidden mt-2 p-2.5 bg-[#FF453A]/15 border border-[#FF453A]/30 rounded-xl flex items-center justify-between">
-          <span class="text-xs text-[#FF453A] font-bold">🚨 잔액 부족 경고 수준 도달!</span>
-          <span id="lowBalanceDetail" class="text-[11px] text-[#FF453A]"></span>
+        <!-- 2단계 잔액 부족 & 3,000원 근접 경고 배너 -->
+        <div id="lowBalanceWarningBanner" class="hidden mt-2.5 p-3 rounded-2xl flex items-center justify-between transition-all duration-300">
+          <span id="lowBalanceTitle" class="text-xs font-bold"></span>
+          <span id="lowBalanceDetail" class="text-[11px] font-semibold"></span>
         </div>
 
-        <p id="baseBalanceHint" class="text-[11px] text-[#8E8E93] mt-1.5">우측 위 버튼으로 실제 잔액 및 부족 알림 기준을 설정하세요</p>
+        <p id="baseBalanceHint" class="text-[11px] text-[#8E8E93] mt-2">우측 위 버튼으로 실제 잔액 및 부족 알림 기준을 설정하세요</p>
         
         <div class="grid grid-cols-2 gap-3 mt-4 p-3.5 bg-[#2C2C2E]/70 rounded-2xl border border-white/5">
           <div>
@@ -405,7 +406,6 @@
           </button>
         </div>
 
-        <!-- 정기 결제 추가 미니 폼 (사전 알림 옵션 탑재) -->
         <div id="subFormBox" class="hidden mt-3 p-4 bg-[#2C2C2E]/80 rounded-2xl border border-white/10 space-y-3">
           <div class="grid grid-cols-3 gap-2">
             <div class="col-span-2">
@@ -613,6 +613,9 @@
     let isSaving = false;
     let currentSearchQuery = '';
 
+    // 잔액 부족 근접 알림 버퍼 (기준 금액 위로 3,000원 차이 이내면 근접 주의 알림!)
+    const NEAR_BALANCE_BUFFER = 3000;
+
     const todayInit = new Date();
     let calYear = todayInit.getFullYear();
     let calMonth = todayInit.getMonth();
@@ -690,7 +693,41 @@
       });
     };
 
-    // --- [신규] 매일 밤 11시(23:00) 가계부 작성 리마인더 시스템 ---
+    // --- [핵심 업그레이드] 2단계 잔액 부족 & 3,000원 근접 알림 검사 엔진 ---
+    function checkAndTriggerBalanceAlert() {
+      const currentBal = baseBalanceOffset + getNetEntriesFlow();
+      const nearThreshold = minBalanceAlert + NEAR_BALANCE_BUFFER;
+
+      // 1단계: 설정한 부족 기준 이하로 떨어진 경우 (위험 경고)
+      if (currentBal <= minBalanceAlert) {
+        const msg = `🚨 [잔액 부족 위험 경고!]\n현재 통장 잔액이 ${currentBal.toLocaleString()}원으로, 설정하신 부족 알림 기준(${minBalanceAlert.toLocaleString()}원) 이하입니다!`;
+        if ('Notification' in window && Notification.permission === 'granted') {
+          try {
+            new Notification('🚨 가계부 잔액 부족 경고!', {
+              body: `현재 잔액: ${currentBal.toLocaleString()}원 (기준 ${minBalanceAlert.toLocaleString()}원 이하)`,
+              icon: 'https://cdn-icons-png.flaticon.com/512/3135/3135706.png'
+            });
+          } catch (e) {}
+        }
+        setTimeout(() => alert(msg), 150);
+      }
+      // 2단계: 설정한 기준 금액보다 1원 ~ 3,000원 위 근처에 도달한 경우 (근접 주의 예고)
+      else if (currentBal <= nearThreshold) {
+        const diff = currentBal - minBalanceAlert;
+        const msg = `⚡ [잔액 부족 근접 주의!]\n현재 통장 잔액이 ${currentBal.toLocaleString()}원입니다.\n설정하신 부족 알림 기준(${minBalanceAlert.toLocaleString()}원)까지 딱 ${diff.toLocaleString()}원 남았습니다!`;
+        if ('Notification' in window && Notification.permission === 'granted') {
+          try {
+            new Notification('⚡ 잔액 부족 근접 주의 (3,000원 이내)', {
+              body: `현재 잔액 ${currentBal.toLocaleString()}원! 기준(${minBalanceAlert.toLocaleString()}원)까지 ${diff.toLocaleString()}원 남음`,
+              icon: 'https://cdn-icons-png.flaticon.com/512/3135/3135706.png'
+            });
+          } catch (e) {}
+        }
+        setTimeout(() => alert(msg), 150);
+      }
+    }
+
+    // --- 매일 밤 11시(23:00) 가계부 작성 리마인더 시스템 ---
     function openNightReminderModal() {
       document.getElementById('nightReminderModal').classList.toggle('hidden');
     }
@@ -715,7 +752,6 @@
 
     function startDaily11PMChecker() {
       checkDaily11PMReminder();
-      // 30초마다 현재 시각이 밤 11시(23시)인지 체크
       setInterval(checkDaily11PMReminder, 30000);
     }
 
@@ -724,7 +760,6 @@
       const now = new Date();
       const hour = now.getHours();
 
-      // 오후 11시(23시) 대에 오늘 알림을 아직 안 보냈다면 발송
       if (hour === 23) {
         const todayKey = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
         const lastRemindedDate = localStorage.getItem('last_11pm_reminded_date');
@@ -732,7 +767,6 @@
 
         localStorage.setItem('last_11pm_reminded_date', todayKey);
 
-        // 오늘 작성된 내역이 있는지 확인
         const hasTodayEntry = entries.some(item => {
           const d = new Date(item.created_at);
           return d.getFullYear() === now.getFullYear() &&
@@ -745,10 +779,12 @@
           : '⏰ 밤 11시입니다! 오늘 가계부 작성을 잊지 않으셨나요? 지금 오늘 쓴 내역을 기록해 보세요!';
 
         if ('Notification' in window && Notification.permission === 'granted') {
-          new Notification('📝 밤 11시 가계부 작성 리마인더', {
-            body: msg,
-            icon: 'https://cdn-icons-png.flaticon.com/512/3135/3135706.png'
-          });
+          try {
+            new Notification('📝 밤 11시 가계부 작성 리마인더', {
+              body: msg,
+              icon: 'https://cdn-icons-png.flaticon.com/512/3135/3135706.png'
+            });
+          } catch (e) {}
         }
         setTimeout(() => alert(msg), 200);
       }
@@ -757,15 +793,16 @@
     function testNightReminderNow() {
       const msg = '⏰ [밤 11시 리마인더 테스트]\n오늘 가계부 작성을 잊지 않으셨나요? 하루를 마무리하며 지출을 기록해 보세요!';
       if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('📝 밤 11시 가계부 작성 리마인더', {
-          body: '오늘 가계부 작성을 잊지 않으셨나요? 지금 기록해 보세요!',
-          icon: 'https://cdn-icons-png.flaticon.com/512/3135/3135706.png'
-        });
+        try {
+          new Notification('📝 밤 11시 가계부 작성 리마인더', {
+            body: '오늘 가계부 작성을 잊지 않으셨나요? 지금 기록해 보세요!',
+            icon: 'https://cdn-icons-png.flaticon.com/512/3135/3135706.png'
+          });
+        } catch (e) {}
       }
       alert(msg);
     }
 
-    // 아이폰/아이패드가 꺼져있을 때도 매일 밤 11시 정각에 울리도록 iOS 캘린더 반복 알람(.ics) 생성
     function downloadDaily11PMCalendarAlarm() {
       const appUrl = window.location.href;
       const icsContent = [
@@ -799,7 +836,7 @@
       document.body.removeChild(link);
     }
 
-    // --- [신규] 정기 결제 1일 전 / 2일 전 사전 알림 감지 로직 ---
+    // --- 정기 결제 1일 전 / 2일 전 사전 알림 감지 로직 ---
     function getDaysUntilBillingDay(billingDay) {
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -862,10 +899,12 @@
       if (newPopupAlerts.length > 0) {
         const combinedMsg = newPopupAlerts.join('\n\n');
         if ('Notification' in window && Notification.permission === 'granted') {
-          new Notification('🔔 정기 결제 사전 알림 (D-1 / D-2)', {
-            body: upcomingMessages.join(', '),
-            icon: 'https://cdn-icons-png.flaticon.com/512/3135/3135706.png'
-          });
+          try {
+            new Notification('🔔 정기 결제 사전 알림 (D-1 / D-2)', {
+              body: upcomingMessages.join(', '),
+              icon: 'https://cdn-icons-png.flaticon.com/512/3135/3135706.png'
+            });
+          } catch (e) {}
         }
         setTimeout(() => alert(combinedMsg), 300);
       }
@@ -1207,7 +1246,7 @@
         document.getElementById('notifBtnText').innerText = '알림 켜짐';
         document.getElementById('notifBtn').classList.replace('text-[#FF9F0A]', 'text-[#30D158]');
         new Notification('나의 가계부 스마트 알림 연동 완료', {
-          body: `잔액 부족 경고, 정기결제 1~2일 전 알림, 밤 11시 리마인더가 활성화되었습니다.`,
+          body: `잔액 부족(3,000원 근접 포함), 정기결제 사전 알림, 밤 11시 리마인더가 켜졌습니다.`,
           icon: 'https://cdn-icons-png.flaticon.com/512/3135/3135706.png'
         });
       } else {
@@ -1215,21 +1254,11 @@
       }
     }
 
-    function triggerLowBalanceAlert(currentBal) {
-      const msg = `⚠️ 잔액 부족 주의!\n현재 잔액이 ${currentBal.toLocaleString()}원으로, 설정한 알림 기준(${minBalanceAlert.toLocaleString()}원) 이하입니다.`;
-      
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('🚨 가계부 잔액 부족 경고', {
-          body: `현재 통장 잔액: ${currentBal.toLocaleString()}원 (기준치 이하)`,
-          icon: 'https://cdn-icons-png.flaticon.com/512/3135/3135706.png'
-        });
-      }
-
-      setTimeout(() => alert(msg), 150);
-    }
-
     async function promptMinBalanceAlert() {
-      const input = prompt('⚠️ 잔액이 얼마 이하일 때 부족 경고 알림을 보낼까요? (숫자만 입력):', minBalanceAlert);
+      const input = prompt(
+        `⚠️ 잔액 부족 알림 기준 금액을 입력해 주세요 (숫자만 입력):\n\n💡 설정하신 금액의 +3,000원 근처에 도달하면 [근접 주의 알림]이 먼저 오고, 설정 금액 이하로 내려가면 [위험 경고 알림]이 울립니다!`,
+        minBalanceAlert
+      );
       if (input === null) return;
       const num = Number(input.replace(/,/g, '').trim());
       if (isNaN(num) || num < 0) {
@@ -1250,6 +1279,7 @@
         }]);
       }
       renderUI();
+      checkAndTriggerBalanceAlert();
     }
 
     function setEntryType(type) {
@@ -1492,6 +1522,7 @@
       }
 
       renderUI();
+      checkAndTriggerBalanceAlert();
     }
 
     function getNetEntriesFlow() {
@@ -1752,11 +1783,9 @@
         buildMemoryBank();
         renderUI();
 
+        // 지출 추가 또는 내역 수정 시 즉시 2단계 잔액 부족(3,000원 근접 포함) 검사 실행!
         if (type === 'expense') {
-          const curBal = baseBalanceOffset + getNetEntriesFlow();
-          if (curBal <= minBalanceAlert) {
-            triggerLowBalanceAlert(curBal);
-          }
+          checkAndTriggerBalanceAlert();
         }
       } finally {
         isSaving = false;
@@ -2091,20 +2120,31 @@
       document.getElementById('totalExpense').innerText = `-${thisMonthExpense.toLocaleString()}원`;
       document.getElementById('totalBalance').innerText = `${finalBalance.toLocaleString()}원`;
 
+      // 2단계 잔액 부족 & 3,000원 근접 경고 배너 실시간 표시
       const warnBanner = document.getElementById('lowBalanceWarningBanner');
+      const warnTitle = document.getElementById('lowBalanceTitle');
       const warnDetail = document.getElementById('lowBalanceDetail');
+      const nearThreshold = minBalanceAlert + NEAR_BALANCE_BUFFER;
+
       if (finalBalance <= minBalanceAlert) {
-        warnBanner.classList.remove('hidden');
-        warnDetail.innerText = `기준치(${minBalanceAlert.toLocaleString()}원) 이하`;
+        warnBanner.className = 'mt-2.5 p-3 bg-[#FF453A]/15 border border-[#FF453A]/40 rounded-2xl flex items-center justify-between';
+        warnTitle.className = 'text-xs text-[#FF453A] font-bold';
+        warnTitle.innerText = '🚨 잔액 부족 위험 경고!';
+        warnDetail.className = 'text-[11px] text-[#FF453A] font-semibold';
+        warnDetail.innerText = `기준(${minBalanceAlert.toLocaleString()}원) 이하`;
+      } else if (finalBalance <= nearThreshold) {
+        const diff = finalBalance - minBalanceAlert;
+        warnBanner.className = 'mt-2.5 p-3 bg-[#FF9F0A]/15 border border-[#FF9F0A]/40 rounded-2xl flex items-center justify-between';
+        warnTitle.className = 'text-xs text-[#FF9F0A] font-bold';
+        warnTitle.innerText = '⚡ 잔액 부족 근접 주의!';
+        warnDetail.className = 'text-[11px] text-[#FF9F0A] font-semibold';
+        warnDetail.innerText = `기준까지 딱 ${diff.toLocaleString()}원 남음`;
       } else {
         warnBanner.classList.add('hidden');
       }
 
-      if (baseBalanceOffset !== 0) {
-        document.getElementById('baseBalanceHint').innerText = `실제 통장 잔고 기준으로 보정됨 (알림 기준: ${minBalanceAlert.toLocaleString()}원 이하)`;
-      } else {
-        document.getElementById('baseBalanceHint').innerText = `알림 기준치: ${minBalanceAlert.toLocaleString()}원 이하 (우측 위에서 변경 가능)`;
-      }
+      document.getElementById('baseBalanceHint').innerText =
+        `부족 알림 기준: ${minBalanceAlert.toLocaleString()}원 (${nearThreshold.toLocaleString()}원부터 근접 주의 알림)`;
 
       updateBudgetUI(thisMonthExpense);
       updateChartAndReportUI(categoryTotals, thisMonthExpense, lastMonthExpense, titleTotals);
