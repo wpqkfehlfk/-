@@ -6,10 +6,12 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="가계부">
-  <title>스마트 가계부 iOS Dark v6.3 Pro</title>
+  <title>스마트 가계부 iOS Dark v7.0 Ultra</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- 부드러운 파티클(꽃가루) 애니메이션 엔진 -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
   <style>
     :root {
       --ios-bg: #000000;
@@ -24,17 +26,29 @@
       --spring-easing: cubic-bezier(0.22, 1, 0.36, 1);
     }
 
+    * {
+      /* 핵심: 한글 단어가 중간에 어색하게 끊겨서 다음 줄로 내려가는 현상 원천 방지 */
+      word-break: keep-all;
+      overflow-wrap: break-word;
+    }
+
     body {
       background-color: var(--ios-bg);
       color: #F2F2F7;
       -webkit-tap-highlight-color: transparent;
       font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Apple SD Gothic Neo", "Segoe UI", Roboto, sans-serif;
-      letter-spacing: -0.015em;
+      letter-spacing: -0.02em;
       overflow-x: hidden;
     }
 
+    /* 모든 버튼과 배지 내부 글씨가 절대 두 줄로 쪼개지지 않도록 고정 */
+    button, .no-wrap-chip {
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
     .ios-glass-header {
-      background: rgba(28, 28, 30, 0.78);
+      background: rgba(28, 28, 30, 0.8);
       backdrop-filter: saturate(180%) blur(24px);
       -webkit-backdrop-filter: saturate(180%) blur(24px);
       border-bottom: 0.5px solid rgba(255, 255, 255, 0.1);
@@ -45,16 +59,17 @@
       border-radius: 24px;
       border: 1px solid rgba(255, 255, 255, 0.07);
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
-      transition: transform 0.35s var(--spring-easing), border-color 0.3s ease;
+      transition: transform 0.35s var(--spring-easing), border-color 0.3s ease, box-shadow 0.35s ease;
     }
 
     .ios-btn {
-      transition: transform 0.2s var(--spring-easing), opacity 0.2s ease, background-color 0.2s ease;
+      transition: transform 0.22s var(--spring-easing), opacity 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
       user-select: none;
+      white-space: nowrap;
     }
     .ios-btn:active {
-      transform: scale(0.95);
-      opacity: 0.8;
+      transform: scale(0.94);
+      opacity: 0.85;
     }
 
     .ios-input {
@@ -95,11 +110,11 @@
     }
 
     @keyframes iosSlideUp {
-      from { opacity: 0; transform: translateY(12px) scale(0.99); }
+      from { opacity: 0; transform: translateY(14px) scale(0.985); }
       to { opacity: 1; transform: translateY(0) scale(1); }
     }
     .animate-ios-in {
-      animation: iosSlideUp 0.42s var(--spring-easing) both;
+      animation: iosSlideUp 0.45s var(--spring-easing) both;
     }
 
     @keyframes iosItemAppear {
@@ -108,14 +123,31 @@
     }
     .ios-list-item {
       animation: iosItemAppear 0.28s var(--spring-easing) both;
-      transition: background-color 0.2s ease;
+      transition: background-color 0.2s ease, transform 0.2s var(--spring-easing);
     }
     .ios-list-item:active {
       background-color: rgba(255, 255, 255, 0.05);
+      transform: scale(0.99);
+    }
+
+    /* 캘린더 접기/펼치기 부드러운 아코디언 애니메이션 */
+    .cal-collapse-wrapper {
+      display: grid;
+      grid-template-rows: 0fr;
+      opacity: 0;
+      transition: grid-template-rows 0.38s var(--spring-easing), opacity 0.3s ease, margin-top 0.3s ease;
+    }
+    .cal-collapse-wrapper.open {
+      grid-template-rows: 1fr;
+      opacity: 1;
+      margin-top: 14px;
+    }
+    .cal-collapse-inner {
+      overflow: hidden;
     }
 
     .cal-cell {
-      min-height: 58px;
+      min-height: 54px;
       border-radius: 12px;
       background-color: rgba(44, 44, 46, 0.45);
       border: 1px solid rgba(255, 255, 255, 0.04);
@@ -123,29 +155,29 @@
     }
     .cal-today {
       border: 1.5px solid var(--ios-blue);
-      background-color: rgba(10, 132, 255, 0.12);
+      background-color: rgba(10, 132, 255, 0.14);
     }
   </style>
 </head>
 <body class="min-h-screen pb-28">
 
-  <!-- 상단 고정 블러 헤더 -->
-  <header class="ios-glass-header pt-11 pb-3.5 px-5 sticky top-0 z-30">
-    <div class="max-w-5xl mx-auto flex justify-between items-center">
-      <div>
-        <div class="flex items-center gap-2">
-          <h1 class="text-[22px] font-extrabold tracking-tight text-white">나의 가계부</h1>
-          <span class="text-[10px] bg-[#BF5AF2]/20 text-[#BF5AF2] px-2 py-0.5 rounded-full font-bold border border-[#BF5AF2]/30">v6.3 Pro</span>
+  <!-- 상단 고정 블러 헤더 (아이폰/아이패드 줄바꿈 방지 완료) -->
+  <header class="ios-glass-header pt-11 pb-3.5 px-4 sm:px-6 sticky top-0 z-30">
+    <div class="max-w-5xl mx-auto flex justify-between items-center gap-2">
+      <div class="min-w-0">
+        <div class="flex items-center gap-1.5">
+          <h1 class="text-[19px] sm:text-[22px] font-extrabold tracking-tight text-white truncate">나의 가계부</h1>
+          <span class="no-wrap-chip text-[10px] bg-[#BF5AF2]/20 text-[#BF5AF2] px-2 py-0.5 rounded-full font-bold border border-[#BF5AF2]/30">v7.0 Ultra</span>
         </div>
         <div class="flex items-center gap-1.5 mt-0.5">
-          <span id="syncDot" class="w-2 h-2 rounded-full bg-[#30D158] inline-block transition-colors duration-300"></span>
-          <p id="syncStatus" class="text-[12px] text-[#8E8E93] font-medium">기기 보호 저장 중</p>
+          <span id="syncDot" class="w-2 h-2 rounded-full bg-[#30D158] inline-block shrink-0 transition-colors duration-300"></span>
+          <p id="syncStatus" class="text-[11px] sm:text-[12px] text-[#8E8E93] font-medium truncate">기기 보호 저장 중</p>
         </div>
       </div>
-      <div class="flex items-center gap-1.5">
+      <div class="flex items-center gap-1.5 shrink-0">
         <button onclick="openNightReminderModal()" class="ios-btn text-[11px] bg-[#2C2C2E] hover:bg-[#3A3A3C] text-[#30D158] px-2.5 py-2 rounded-full font-semibold border border-white/10 flex items-center gap-1">
           <span>⏰</span>
-          <span>11시 리마인더</span>
+          <span>11시 알림</span>
         </button>
         <button id="notifBtn" onclick="requestNotificationPermission()" class="ios-btn text-[11px] bg-[#2C2C2E] hover:bg-[#3A3A3C] text-[#FF9F0A] px-2.5 py-2 rounded-full font-semibold border border-white/10 flex items-center gap-1">
           <span>🔔</span>
@@ -175,7 +207,7 @@
       </div>
 
       <div class="space-y-3 mt-3">
-        <div class="p-3.5 bg-[#2C2C2E]/80 rounded-2xl border border-white/5 flex justify-between items-center">
+        <div class="p-3.5 bg-[#2C2C2E]/80 rounded-2xl border border-white/5 flex justify-between items-center gap-2">
           <div>
             <span class="text-[13px] font-bold text-white block">앱 내 밤 11시 자동 체크 알림</span>
             <span class="text-[11px] text-[#8E8E93]">밤 11시 이후 오늘 기록이 없으면 알림 발송</span>
@@ -186,15 +218,15 @@
         </div>
 
         <div class="p-3.5 bg-[#0A84FF]/10 rounded-2xl border border-[#0A84FF]/30">
-          <span class="text-[12px] font-bold text-[#0A84FF] block mb-1">💡 화면이 꺼져있을 때도 매일 밤 11시 정각에 알림 받기 (iOS 순정 연동)</span>
+          <span class="text-[12px] font-bold text-[#0A84FF] block mb-1">💡 화면이 꺼져있을 때도 매일 밤 11시 정각에 알림 받기</span>
           <p class="text-[11px] text-slate-300 leading-relaxed mb-2.5">
-            아이폰/아이패드는 앱을 완전히 닫아두면 보안상 웹 알림이 제한될 수 있습니다. 아래 버튼을 누르면 <b>iOS 기본 캘린더/알림에 '매일 밤 23:00 가계부 작성 알림'</b>이 바로 등록되어 화면이 꺼져 있어도 100% 정각에 울립니다!
+            아래 버튼을 누르면 <b>iOS 기본 캘린더/알림에 '매일 밤 23:00 가계부 작성 알림'</b>이 바로 등록되어 화면이 꺼져 있어도 100% 정각에 울립니다!
           </p>
-          <div class="flex gap-2">
-            <button onclick="downloadDaily11PMCalendarAlarm()" class="ios-btn flex-1 bg-[#0A84FF] text-white text-[12px] font-bold py-2.5 rounded-xl">
-              📲 아이폰/아이패드 매일 밤 11시 정각 알람 등록하기
+          <div class="flex flex-wrap sm:flex-nowrap gap-2">
+            <button onclick="downloadDaily11PMCalendarAlarm()" class="ios-btn flex-1 bg-[#0A84FF] text-white text-[12px] font-bold py-2.5 px-3 rounded-xl">
+              📲 매일 밤 11시 정각 알람 등록
             </button>
-            <button onclick="testNightReminderNow()" class="ios-btn bg-[#2C2C2E] text-slate-200 text-[12px] font-semibold px-3 py-2.5 rounded-xl border border-white/10">
+            <button onclick="testNightReminderNow()" class="ios-btn bg-[#2C2C2E] text-slate-200 text-[12px] font-semibold px-3.5 py-2.5 rounded-xl border border-white/10">
               테스트 알림
             </button>
           </div>
@@ -213,7 +245,7 @@
       <div class="flex justify-between items-start mb-2">
         <div>
           <h2 class="text-[15px] font-bold text-white">☁️ 아이폰 ↔ 아이패드 실시간 연동 설정</h2>
-          <p class="text-[12px] text-[#8E8E93] mt-0.5">Supabase URL과 Key를 입력하면 모든 내역·정기결제·저축금고가 동기화됩니다.</p>
+          <p class="text-[12px] text-[#8E8E93] mt-0.5">Supabase URL과 Key를 입력하면 내역·정기결제·저축금고·예산이 모두 실시간 연동됩니다.</p>
         </div>
       </div>
       <div class="space-y-3 mt-3">
@@ -236,15 +268,15 @@
 
   <!-- 다가오는 정기결제 D-1 / D-2 사전 알림 상단 배너 -->
   <div id="upcomingSubAlertBanner" class="hidden max-w-5xl mx-auto mt-4 px-4">
-    <div class="p-4 rounded-2xl bg-[#BF5AF2]/15 border border-[#BF5AF2]/40 flex items-center justify-between animate-ios-in">
-      <div class="flex items-center gap-2.5">
-        <span class="text-lg">🔔</span>
-        <div>
+    <div class="p-4 rounded-2xl bg-[#BF5AF2]/15 border border-[#BF5AF2]/40 flex items-center justify-between gap-2 animate-ios-in">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <span class="text-lg shrink-0">🔔</span>
+        <div class="min-w-0">
           <h3 class="text-[13px] font-bold text-[#BF5AF2]">정기 결제 사전 알림 (D-1 / D-2)</h3>
           <p id="upcomingSubAlertText" class="text-[12px] text-white font-medium mt-0.5"></p>
         </div>
       </div>
-      <button onclick="document.getElementById('upcomingSubAlertBanner').classList.add('hidden')" class="text-xs text-[#8E8E93] px-2 py-1">닫기</button>
+      <button onclick="document.getElementById('upcomingSubAlertBanner').classList.add('hidden')" class="ios-btn text-xs text-[#8E8E93] px-2 py-1">닫기</button>
     </div>
   </div>
 
@@ -254,11 +286,11 @@
     <!-- 왼쪽/상단 컬럼 -->
     <section class="md:col-span-5 space-y-5">
       
-      <!-- 1. 통장 잔액 & 2단계 부족 알림(3,000원 근접 주의 + 기준 이하 경고) 카드 -->
-      <div class="ios-card p-6 animate-ios-in" style="animation-delay: 0.02s;">
-        <div class="flex justify-between items-center">
-          <span class="text-[12px] font-semibold text-[#8E8E93]">현재 내 통장 잔액</span>
-          <div class="flex gap-1.5">
+      <!-- 1. 통장 잔액 & 2단계 부족 알림 카드 -->
+      <div class="ios-card p-5 sm:p-6 animate-ios-in" style="animation-delay: 0.02s;">
+        <div class="flex flex-wrap justify-between items-center gap-2">
+          <span class="text-[12px] font-semibold text-[#8E8E93] whitespace-nowrap">현재 내 통장 잔액</span>
+          <div class="flex items-center gap-1.5">
             <button onclick="promptMinBalanceAlert()" class="ios-btn text-[11px] bg-[#FF9F0A]/15 text-[#FF9F0A] border border-[#FF9F0A]/30 px-2.5 py-1 rounded-full font-bold">
               ⚠️ 부족 알림 기준
             </button>
@@ -267,41 +299,41 @@
             </button>
           </div>
         </div>
-        <div id="totalBalance" class="text-[34px] font-extrabold text-white mt-1.5 tracking-tight leading-tight">0원</div>
+        <div id="totalBalance" class="text-[30px] sm:text-[34px] font-extrabold text-white mt-2 tracking-tight leading-tight">0원</div>
         
         <!-- 2단계 잔액 부족 & 3,000원 근접 경고 배너 -->
-        <div id="lowBalanceWarningBanner" class="hidden mt-2.5 p-3 rounded-2xl flex items-center justify-between transition-all duration-300">
-          <span id="lowBalanceTitle" class="text-xs font-bold"></span>
-          <span id="lowBalanceDetail" class="text-[11px] font-semibold"></span>
+        <div id="lowBalanceWarningBanner" class="hidden mt-2.5 p-3 rounded-2xl flex items-center justify-between gap-2 transition-all duration-300">
+          <span id="lowBalanceTitle" class="text-xs font-bold whitespace-nowrap"></span>
+          <span id="lowBalanceDetail" class="text-[11px] font-semibold text-right"></span>
         </div>
 
-        <p id="baseBalanceHint" class="text-[11px] text-[#8E8E93] mt-2">우측 위 버튼으로 실제 잔액 및 부족 알림 기준을 설정하세요</p>
+        <p id="baseBalanceHint" class="text-[11px] text-[#8E8E93] mt-2 leading-relaxed">우측 위 버튼으로 실제 잔액 및 부족 알림 기준을 설정하세요</p>
         
         <div class="grid grid-cols-2 gap-3 mt-4 p-3.5 bg-[#2C2C2E]/70 rounded-2xl border border-white/5">
-          <div>
+          <div class="min-w-0">
             <div class="flex items-center gap-1.5">
-              <span class="w-1.5 h-1.5 rounded-full bg-[#30D158]"></span>
-              <span class="text-[11px] font-medium text-[#8E8E93]">이번 달 수입</span>
+              <span class="w-1.5 h-1.5 rounded-full bg-[#30D158] shrink-0"></span>
+              <span class="text-[11px] font-medium text-[#8E8E93] whitespace-nowrap">이번 달 수입</span>
             </div>
-            <p id="totalIncome" class="text-[15px] font-bold text-[#30D158] mt-0.5">+0원</p>
+            <p id="totalIncome" class="text-[14px] sm:text-[15px] font-bold text-[#30D158] mt-0.5 truncate">+0원</p>
           </div>
-          <div class="border-l border-white/10 pl-3">
+          <div class="border-l border-white/10 pl-3 min-w-0">
             <div class="flex items-center gap-1.5">
-              <span class="w-1.5 h-1.5 rounded-full bg-[#FF453A]"></span>
-              <span class="text-[11px] font-medium text-[#8E8E93]">이번 달 지출</span>
+              <span class="w-1.5 h-1.5 rounded-full bg-[#FF453A] shrink-0"></span>
+              <span class="text-[11px] font-medium text-[#8E8E93] whitespace-nowrap">이번 달 지출</span>
             </div>
-            <p id="totalExpense" class="text-[15px] font-bold text-[#FF453A] mt-0.5">-0원</p>
+            <p id="totalExpense" class="text-[14px] sm:text-[15px] font-bold text-[#FF453A] mt-0.5 truncate">-0원</p>
           </div>
         </div>
 
         <div class="mt-5 pt-4 border-t border-white/10">
-          <div class="flex justify-between items-center mb-1.5">
-            <span class="text-[13px] font-bold text-slate-200">🎯 이번 달 목표 지출 예산</span>
-            <button onclick="promptBudget()" class="ios-btn text-[12px] text-[#0A84FF] bg-[#0A84FF]/15 px-3 py-1 rounded-full font-semibold">예산 설정</button>
+          <div class="flex justify-between items-center gap-2 mb-1.5">
+            <span class="text-[13px] font-bold text-slate-200 whitespace-nowrap">🎯 이번 달 목표 지출 예산</span>
+            <button onclick="promptBudget()" class="ios-btn text-[11px] text-[#0A84FF] bg-[#0A84FF]/15 px-3 py-1 rounded-full font-semibold">예산 설정</button>
           </div>
-          <div class="flex justify-between items-baseline text-[12px] text-[#8E8E93] mb-2">
-            <span id="budgetStatusText">예산을 설정해 보세요</span>
-            <span id="budgetPercentText" class="font-bold text-slate-200">0%</span>
+          <div class="flex justify-between items-baseline text-[12px] text-[#8E8E93] mb-2 gap-2">
+            <span id="budgetStatusText" class="truncate">예산을 설정해 보세요</span>
+            <span id="budgetPercentText" class="font-bold text-slate-200 shrink-0">0%</span>
           </div>
           <div class="w-full h-2.5 bg-[#2C2C2E] rounded-full overflow-hidden p-0.5">
             <div id="budgetProgressBar" class="h-full rounded-full bg-[#30D158] transition-all duration-700 ease-out" style="width: 0%"></div>
@@ -312,17 +344,17 @@
 
       <!-- 2. 한 줄 빠른 입력 바 -->
       <div class="ios-card p-5 border border-[#0A84FF]/25 animate-ios-in" style="animation-delay: 0.05s;">
-        <div class="flex justify-between items-center mb-2">
+        <div class="flex justify-between items-center gap-2 mb-2">
           <div class="flex items-center gap-1.5">
             <span class="text-sm">⚡</span>
-            <label class="text-[13px] font-bold text-white">한 줄 빠른 입력</label>
+            <label class="text-[13px] font-bold text-white whitespace-nowrap">한 줄 빠른 입력</label>
           </div>
-          <span class="text-[11px] text-[#0A84FF] font-medium">용돈 2000 · 밥4000</span>
+          <span class="text-[11px] text-[#0A84FF] font-medium whitespace-nowrap">용돈 2000 · 밥4000</span>
         </div>
         <form onsubmit="handleQuickSubmit(event)" class="flex gap-2">
           <input id="quickInput" type="text" placeholder="내역과 금액 입력 (예: 커피 4500)"
             oninput="parseQuickInput(this.value)"
-            class="ios-input flex-1 px-3.5 py-3 text-[14px]">
+            class="ios-input flex-1 min-w-0 px-3.5 py-3 text-[14px]">
           <button type="submit" class="ios-btn bg-[#0A84FF] text-white font-semibold px-4 rounded-[14px] text-[13px] shrink-0 shadow-sm">
             등록
           </button>
@@ -331,10 +363,10 @@
       </div>
 
       <!-- 3. 내역 상세 기록 및 수정 카드 -->
-      <div id="formCard" class="ios-card p-6 animate-ios-in" style="animation-delay: 0.08s;">
-        <div class="flex justify-between items-center mb-4">
-          <h2 id="formTitle" class="text-[16px] font-bold text-white">내역 상세 기록</h2>
-          <span id="memoryBadge" class="hidden text-[11px] bg-[#FF9F0A]/20 text-[#FF9F0A] px-2.5 py-1 rounded-full font-bold border border-[#FF9F0A]/30">
+      <div id="formCard" class="ios-card p-5 sm:p-6 animate-ios-in" style="animation-delay: 0.08s;">
+        <div class="flex justify-between items-center gap-2 mb-4">
+          <h2 id="formTitle" class="text-[16px] font-bold text-white whitespace-nowrap">내역 상세 기록</h2>
+          <span id="memoryBadge" class="hidden no-wrap-chip text-[11px] bg-[#FF9F0A]/20 text-[#FF9F0A] px-2.5 py-1 rounded-full font-bold border border-[#FF9F0A]/30">
             ✨ 자동 기억 완료
           </span>
         </div>
@@ -391,17 +423,17 @@
         </form>
       </div>
 
-      <!-- 4. 정기 결제 / 고정 지출 자동 관리 + 1~2일 전 사전 알림 설정 -->
-      <div class="ios-card p-6 animate-ios-in" style="animation-delay: 0.11s;">
-        <div class="flex justify-between items-center mb-2">
-          <div>
+      <!-- 4. 정기 결제 / 고정 지출 자동 관리 -->
+      <div class="ios-card p-5 sm:p-6 animate-ios-in" style="animation-delay: 0.11s;">
+        <div class="flex justify-between items-center gap-2 mb-2">
+          <div class="min-w-0">
             <h2 class="text-[15px] font-bold text-white flex items-center gap-1.5">
               <span>🔄</span>
-              <span>정기 결제 · 사전 알림 관리</span>
+              <span class="whitespace-nowrap">정기 결제 · 사전 알림</span>
             </h2>
-            <p class="text-[11px] text-[#8E8E93] mt-0.5">결제 1~2일 전 미리 알림을 보내고 결제일에 자동 등록합니다</p>
+            <p class="text-[11px] text-[#8E8E93] mt-0.5 leading-snug">결제 1~2일 전 미리 알리고 당일에 자동 등록합니다</p>
           </div>
-          <button onclick="toggleSubModal()" class="ios-btn text-[12px] bg-[#BF5AF2]/20 text-[#BF5AF2] border border-[#BF5AF2]/30 px-3 py-1.5 rounded-full font-bold">
+          <button onclick="toggleSubModal()" class="ios-btn text-[11px] bg-[#BF5AF2]/20 text-[#BF5AF2] border border-[#BF5AF2]/30 px-3 py-1.5 rounded-full font-bold">
             + 정기결제 추가
           </button>
         </div>
@@ -414,7 +446,7 @@
             </div>
             <div>
               <label class="text-[11px] text-[#8E8E93]">매월 결제일</label>
-              <input id="subDay" type="number" min="1" max="31" placeholder="15 (일)" class="ios-input w-full mt-1 p-2.5 text-[13px] !bg-[#1C1C1E]">
+              <input id="subDay" type="number" min="1" max="31" placeholder="15" class="ios-input w-full mt-1 p-2.5 text-[13px] !bg-[#1C1C1E]">
             </div>
           </div>
           <div class="grid grid-cols-2 gap-2">
@@ -457,14 +489,14 @@
       </div>
 
       <!-- 5. 목표 저축 금고 -->
-      <div class="ios-card p-6 animate-ios-in" style="animation-delay: 0.13s;">
-        <div class="flex justify-between items-center mb-2">
-          <div>
+      <div class="ios-card p-5 sm:p-6 animate-ios-in" style="animation-delay: 0.13s;">
+        <div class="flex justify-between items-center gap-2 mb-2">
+          <div class="min-w-0">
             <h2 class="text-[15px] font-bold text-white flex items-center gap-1.5">
               <span>🐷</span>
-              <span id="vaultTitleText">목표 저축 금고</span>
+              <span id="vaultTitleText" class="truncate">목표 저축 금고</span>
             </h2>
-            <p class="text-[11px] text-[#8E8E93] mt-0.5">사고 싶은 것이나 목표 금액을 정하고 차곡차곡 모아보세요</p>
+            <p class="text-[11px] text-[#8E8E93] mt-0.5 leading-snug">목표 금액을 정하고 차곡차곡 모아보세요</p>
           </div>
           <button onclick="promptVaultGoal()" class="ios-btn text-[11px] bg-[#30D158]/15 text-[#30D158] border border-[#30D158]/30 px-2.5 py-1 rounded-full font-bold">
             목표 설정
@@ -472,9 +504,9 @@
         </div>
 
         <div class="mt-3 p-4 bg-[#2C2C2E]/70 rounded-2xl border border-white/5">
-          <div class="flex justify-between items-baseline mb-1.5">
-            <span id="vaultAmountText" class="text-[18px] font-extrabold text-[#30D158]">0원</span>
-            <span id="vaultTargetText" class="text-[12px] text-[#8E8E93]">목표: 미설정</span>
+          <div class="flex justify-between items-baseline gap-2 mb-1.5">
+            <span id="vaultAmountText" class="text-[17px] sm:text-[18px] font-extrabold text-[#30D158] whitespace-nowrap">0원</span>
+            <span id="vaultTargetText" class="text-[11px] sm:text-[12px] text-[#8E8E93] truncate">목표: 미설정</span>
           </div>
           <div class="w-full h-2.5 bg-[#1C1C1E] rounded-full overflow-hidden p-0.5 mb-3">
             <div id="vaultProgressBar" class="h-full rounded-full bg-[#30D158] transition-all duration-700 ease-out" style="width: 0%"></div>
@@ -496,14 +528,14 @@
     <section class="md:col-span-7 space-y-5">
       
       <!-- 6. 이번 달 지출 분석 + 전월 대비 비교 + 지출 TOP 3 랭킹 -->
-      <div class="ios-card p-6 animate-ios-in" style="animation-delay: 0.14s;">
-        <div class="flex justify-between items-center mb-3">
-          <h2 id="chartMonthTitle" class="text-[16px] font-bold text-white">📊 이번 달 소비 분석 리포트</h2>
-          <span class="text-[11px] font-medium text-[#8E8E93] bg-[#2C2C2E] px-2.5 py-1 rounded-full">실시간 리포트</span>
+      <div class="ios-card p-5 sm:p-6 animate-ios-in" style="animation-delay: 0.14s;">
+        <div class="flex justify-between items-center gap-2 mb-3">
+          <h2 id="chartMonthTitle" class="text-[16px] font-bold text-white whitespace-nowrap">📊 이번 달 소비 분석 리포트</h2>
+          <span class="no-wrap-chip text-[11px] font-medium text-[#8E8E93] bg-[#2C2C2E] px-2.5 py-1 rounded-full">실시간 리포트</span>
         </div>
 
-        <div id="monthCompareBanner" class="mb-4 p-3.5 rounded-2xl bg-[#2C2C2E]/80 border border-white/5 flex items-center justify-between text-[12px]">
-          <span class="text-[#8E8E93] font-medium">📈 전월 대비 지출 비교</span>
+        <div id="monthCompareBanner" class="mb-4 p-3.5 rounded-2xl bg-[#2C2C2E]/80 border border-white/5 flex flex-wrap items-center justify-between gap-2 text-[12px]">
+          <span class="text-[#8E8E93] font-medium whitespace-nowrap">📈 전월 대비 지출 비교</span>
           <span id="monthCompareText" class="font-bold text-white">계산 중...</span>
         </div>
         
@@ -529,43 +561,59 @@
         </div>
       </div>
 
-      <!-- 7. 월간 소비 캘린더 & 무지출 데이 챌린지 스탬프 -->
-      <div class="ios-card p-6 animate-ios-in" style="animation-delay: 0.16s;">
-        <div class="flex justify-between items-center mb-3">
-          <div>
-            <h2 class="text-[16px] font-bold text-white flex items-center gap-1.5">
-              <span>📅</span>
-              <span id="calendarTitle">이번 달 소비 캘린더</span>
-            </h2>
-            <p class="text-[11px] text-[#8E8E93] mt-0.5">지출이 0원인 날에는 무지출 성공 🌱 스탬프가 찍혀요!</p>
+      <!-- 7. [접기/펼치기 탑재] 월간 소비 캘린더 & 무지출 데이 챌린지 스탬프 -->
+      <div class="ios-card p-5 sm:p-6 animate-ios-in" style="animation-delay: 0.16s;">
+        <div class="flex flex-wrap justify-between items-center gap-2">
+          <div class="min-w-0">
+            <div class="flex items-center gap-2">
+              <h2 class="text-[15px] sm:text-[16px] font-bold text-white flex items-center gap-1.5 whitespace-nowrap">
+                <span>📅</span>
+                <span id="calendarTitle">소비 캘린더</span>
+              </h2>
+              <span id="noSpendCountBadge" class="no-wrap-chip text-[11px] bg-[#30D158]/15 text-[#30D158] border border-[#30D158]/30 px-2.5 py-0.5 rounded-full font-bold">
+                🌱 무지출 0일
+              </span>
+            </div>
+            <p class="text-[11px] text-[#8E8E93] mt-0.5">버튼을 눌러 달력과 무지출 스탬프를 펼쳐보세요</p>
           </div>
-          <div class="flex items-center gap-1.5">
-            <span id="noSpendCountBadge" class="text-[11px] bg-[#30D158]/15 text-[#30D158] border border-[#30D158]/30 px-2.5 py-1 rounded-full font-bold">
-              🌱 무지출 0일 성공
-            </span>
-            <button onclick="changeCalendarMonth(-1)" class="ios-btn w-7 h-7 rounded-full bg-[#2C2C2E] text-white text-xs font-bold flex items-center justify-center">◀</button>
-            <button onclick="changeCalendarMonth(1)" class="ios-btn w-7 h-7 rounded-full bg-[#2C2C2E] text-white text-xs font-bold flex items-center justify-center">▶</button>
-          </div>
+
+          <button id="toggleCalBtn" onclick="toggleCalendarCollapse()" class="ios-btn text-[12px] bg-[#2C2C2E] hover:bg-[#3A3A3C] text-[#0A84FF] px-3.5 py-2 rounded-full font-bold border border-white/10 flex items-center gap-1.5">
+            <span id="toggleCalBtnText">캘린더 펼치기</span>
+            <span id="toggleCalArrow" class="text-[10px] transition-transform duration-300">▼</span>
+          </button>
         </div>
 
-        <div class="grid grid-cols-7 gap-1.5 text-center text-[11px] font-bold text-[#8E8E93] mb-1.5">
-          <div class="text-[#FF453A]">일</div>
-          <div>월</div>
-          <div>화</div>
-          <div>수</div>
-          <div>목</div>
-          <div>금</div>
-          <div class="text-[#0A84FF]">토</div>
+        <!-- 접혔다 펼쳐지는 달력 본문 영역 -->
+        <div id="calendarCollapseWrapper" class="cal-collapse-wrapper">
+          <div class="cal-collapse-inner">
+            <div class="pt-3 border-t border-white/10 flex justify-between items-center mb-3">
+              <span class="text-[11px] text-[#8E8E93]">지출이 0원인 날에는 🌱 무지출 스탬프가 찍힙니다</span>
+              <div class="flex items-center gap-1.5">
+                <button onclick="changeCalendarMonth(-1)" class="ios-btn w-7 h-7 rounded-full bg-[#2C2C2E] text-white text-xs font-bold flex items-center justify-center">◀</button>
+                <button onclick="changeCalendarMonth(1)" class="ios-btn w-7 h-7 rounded-full bg-[#2C2C2E] text-white text-xs font-bold flex items-center justify-center">▶</button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-7 gap-1.5 text-center text-[11px] font-bold text-[#8E8E93] mb-1.5">
+              <div class="text-[#FF453A]">일</div>
+              <div>월</div>
+              <div>화</div>
+              <div>수</div>
+              <div>목</div>
+              <div>금</div>
+              <div class="text-[#0A84FF]">토</div>
+            </div>
+            <div id="calendarGrid" class="grid grid-cols-7 gap-1.5"></div>
+          </div>
         </div>
-        <div id="calendarGrid" class="grid grid-cols-7 gap-1.5"></div>
       </div>
 
       <!-- 8. 내역 검색 & 최근 기록 내역 리스트 -->
-      <div class="ios-card p-6 min-h-[420px] animate-ios-in" style="animation-delay: 0.18s;">
-        <div class="flex justify-between items-center mb-4">
-          <div>
-            <h2 class="text-[16px] font-bold text-white">최근 기록 내역</h2>
-            <p class="text-[11px] text-[#8E8E93] mt-0.5">내역을 검색하면 해당 항목에 쓴 총금액을 바로 알려드려요</p>
+      <div class="ios-card p-5 sm:p-6 min-h-[420px] animate-ios-in" style="animation-delay: 0.18s;">
+        <div class="flex justify-between items-center gap-2 mb-4">
+          <div class="min-w-0">
+            <h2 class="text-[16px] font-bold text-white whitespace-nowrap">최근 기록 내역</h2>
+            <p class="text-[11px] text-[#8E8E93] mt-0.5 truncate">검색하면 해당 항목에 쓴 총금액을 바로 알려드려요</p>
           </div>
           <button onclick="syncWithCloud(true)" class="ios-btn text-[12px] bg-[#2C2C2E] hover:bg-[#3A3A3C] text-[#0A84FF] px-3.5 py-1.5 rounded-full font-semibold flex items-center gap-1 border border-white/5">
             <span>🔄</span>
@@ -584,12 +632,12 @@
         </div>
 
         <div id="searchSummaryCard" class="hidden mb-4 p-4 rounded-2xl bg-[#2C2C2E]/90 border border-[#0A84FF]/30 animate-ios-in">
-          <div class="flex justify-between items-center">
-            <div>
-              <span id="searchKeywordLabel" class="text-[12px] font-bold text-[#0A84FF]"></span>
+          <div class="flex justify-between items-center gap-2">
+            <div class="min-w-0">
+              <span id="searchKeywordLabel" class="text-[12px] font-bold text-[#0A84FF] block truncate"></span>
               <p id="searchCountLabel" class="text-[11px] text-[#8E8E93] mt-0.5"></p>
             </div>
-            <div class="text-right">
+            <div class="text-right shrink-0">
               <span class="text-[11px] text-[#8E8E93] block">검색 항목 총 사용 금액</span>
               <span id="searchTotalExpense" class="text-[18px] font-extrabold text-[#FF453A]">0원</span>
               <span id="searchTotalIncome" class="hidden text-[12px] font-bold text-[#30D158] block mt-0.5"></span>
@@ -612,14 +660,15 @@
     let isSyncing = false;
     let isSaving = false;
     let currentSearchQuery = '';
+    let isCalendarOpen = false;
 
-    // 잔액 부족 근접 알림 버퍼 (기준 금액 위로 3,000원 차이 이내면 근접 주의 알림!)
     const NEAR_BALANCE_BUFFER = 3000;
 
     const todayInit = new Date();
     let calYear = todayInit.getFullYear();
     let calMonth = todayInit.getMonth();
 
+    // 고정 시스템 레코드 ID (내역 외 모든 부가기능을 Supabase ledger 테이블과 100% 양방향 연동)
     const BUDGET_SYNC_ID = 9999999999999;
     const BASE_BALANCE_SYNC_ID = 9999999999998;
     const MIN_BALANCE_ALERT_ID = 9999999999997;
@@ -638,7 +687,7 @@
     let baseBalanceOffset = Number(localStorage.getItem('base_balance_offset_v5')) || 0;
     let minBalanceAlert = Number(localStorage.getItem('min_balance_alert_v5')) || 10000;
     let subscriptions = JSON.parse(localStorage.getItem('subscriptions_v6') || '[]');
-    let savingsVault = JSON.parse(localStorage.getItem('savings_vault_v6') || '{"name":"목표 저축 금고","target":0,"saved":0}');
+    let savingsVault = JSON.parse(localStorage.getItem('savings_vault_v6') || '{"name":"목표 저축 금고","target":0,"saved":0,"updatedAt":0}');
     let deletedIds = new Set(JSON.parse(localStorage.getItem('deleted_ledger_ids_v5') || '[]'));
     let nightReminderEnabled = localStorage.getItem('night_reminder_enabled_v6') !== 'false';
     let chartInstance = null;
@@ -693,12 +742,49 @@
       });
     };
 
-    // --- [핵심 업그레이드] 2단계 잔액 부족 & 3,000원 근접 알림 검사 엔진 ---
+    // --- 감각적인 파티클(꽃가루) 효과 함수 ---
+    function fireCelebrationParticles(type = 'default') {
+      if (typeof confetti !== 'function') return;
+      if (type === 'gold') {
+        confetti({
+          particleCount: 45,
+          spread: 65,
+          origin: { y: 0.7 },
+          colors: ['#30D158', '#FFD60A', '#0A84FF', '#BF5AF2']
+        });
+      } else {
+        confetti({
+          particleCount: 28,
+          spread: 55,
+          origin: { y: 0.75 },
+          colors: ['#0A84FF', '#30D158', '#5E5CE6']
+        });
+      }
+    }
+
+    // --- 소비 캘린더 접기 / 펼치기 토글 함수 ---
+    function toggleCalendarCollapse() {
+      isCalendarOpen = !isCalendarOpen;
+      const wrapper = document.getElementById('calendarCollapseWrapper');
+      const btnText = document.getElementById('toggleCalBtnText');
+      const arrow = document.getElementById('toggleCalArrow');
+
+      if (isCalendarOpen) {
+        wrapper.classList.add('open');
+        btnText.innerText = '캘린더 닫기';
+        arrow.style.transform = 'rotate(180deg)';
+      } else {
+        wrapper.classList.remove('open');
+        btnText.innerText = '캘린더 펼치기';
+        arrow.style.transform = 'rotate(0deg)';
+      }
+    }
+
+    // --- 2단계 잔액 부족 & 3,000원 근접 알림 검사 엔진 ---
     function checkAndTriggerBalanceAlert() {
       const currentBal = baseBalanceOffset + getNetEntriesFlow();
       const nearThreshold = minBalanceAlert + NEAR_BALANCE_BUFFER;
 
-      // 1단계: 설정한 부족 기준 이하로 떨어진 경우 (위험 경고)
       if (currentBal <= minBalanceAlert) {
         const msg = `🚨 [잔액 부족 위험 경고!]\n현재 통장 잔액이 ${currentBal.toLocaleString()}원으로, 설정하신 부족 알림 기준(${minBalanceAlert.toLocaleString()}원) 이하입니다!`;
         if ('Notification' in window && Notification.permission === 'granted') {
@@ -710,9 +796,7 @@
           } catch (e) {}
         }
         setTimeout(() => alert(msg), 150);
-      }
-      // 2단계: 설정한 기준 금액보다 1원 ~ 3,000원 위 근처에 도달한 경우 (근접 주의 예고)
-      else if (currentBal <= nearThreshold) {
+      } else if (currentBal <= nearThreshold) {
         const diff = currentBal - minBalanceAlert;
         const msg = `⚡ [잔액 부족 근접 주의!]\n현재 통장 잔액이 ${currentBal.toLocaleString()}원입니다.\n설정하신 부족 알림 기준(${minBalanceAlert.toLocaleString()}원)까지 딱 ${diff.toLocaleString()}원 남았습니다!`;
         if ('Notification' in window && Notification.permission === 'granted') {
@@ -727,7 +811,7 @@
       }
     }
 
-    // --- 매일 밤 11시(23:00) 가계부 작성 리마인더 시스템 ---
+    // --- 매일 밤 11시(23:00) 가계부 작성 리마인더 ---
     function openNightReminderModal() {
       document.getElementById('nightReminderModal').classList.toggle('hidden');
     }
@@ -758,13 +842,9 @@
     function checkDaily11PMReminder() {
       if (!nightReminderEnabled) return;
       const now = new Date();
-      const hour = now.getHours();
-
-      if (hour === 23) {
+      if (now.getHours() === 23) {
         const todayKey = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
-        const lastRemindedDate = localStorage.getItem('last_11pm_reminded_date');
-        if (lastRemindedDate === todayKey) return;
-
+        if (localStorage.getItem('last_11pm_reminded_date') === todayKey) return;
         localStorage.setItem('last_11pm_reminded_date', todayKey);
 
         const hasTodayEntry = entries.some(item => {
@@ -836,7 +916,7 @@
       document.body.removeChild(link);
     }
 
-    // --- 정기 결제 1일 전 / 2일 전 사전 알림 감지 로직 ---
+    // --- 정기 결제 1일 전 / 2일 전 사전 알림 ---
     function getDaysUntilBillingDay(billingDay) {
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -937,13 +1017,14 @@
       };
 
       subscriptions.push(newSub);
-      saveSubscriptions();
+      await saveSubscriptionsToCloud();
 
       document.getElementById('subTitle').value = '';
       document.getElementById('subDay').value = '';
       document.getElementById('subAmount').value = '';
       toggleSubModal();
 
+      fireCelebrationParticles('default');
       await processAutoSubscriptions();
       checkUpcomingSubscriptionReminders();
       renderUI();
@@ -952,18 +1033,18 @@
     async function deleteSubscription(id) {
       if (!confirm('이 정기 결제를 목록에서 삭제할까요?')) return;
       subscriptions = subscriptions.filter(s => Number(s.id) !== Number(id));
-      saveSubscriptions();
+      await saveSubscriptionsToCloud();
       checkUpcomingSubscriptionReminders();
       renderUI();
     }
 
-    function saveSubscriptions() {
+    async function saveSubscriptionsToCloud() {
       localStorage.setItem('subscriptions_v6', JSON.stringify(subscriptions));
       if (supabaseClient) {
-        supabaseClient.from('ledger').upsert([{
+        await supabaseClient.from('ledger').upsert([{
           id: SUBSCRIPTIONS_SYNC_ID,
           title: JSON.stringify(subscriptions),
-          amount: 0,
+          amount: subscriptions.length,
           type: 'system',
           category: 'subscriptions',
           created_at: new Date().toISOString()
@@ -1015,7 +1096,7 @@
       if (updated) {
         entries.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
         saveToLocalStorage();
-        saveSubscriptions();
+        await saveSubscriptionsToCloud();
       }
     }
 
@@ -1035,29 +1116,29 @@
         monthlySum += Number(sub.amount) || 0;
         const diffDays = getDaysUntilBillingDay(sub.day);
         const dBadge = (diffDays === 1 || diffDays === 2)
-          ? `<span class="text-[10px] bg-[#FF9F0A]/20 text-[#FF9F0A] px-1.5 py-0.5 rounded font-bold">D-${diffDays}</span>`
+          ? `<span class="no-wrap-chip text-[10px] bg-[#FF9F0A]/20 text-[#FF9F0A] px-1.5 py-0.5 rounded font-bold">D-${diffDays}</span>`
           : '';
 
         const remindLabelMap = {
-          'both': '1·2일전 알림',
-          '1': '1일전 알림',
-          '2': '2일전 알림',
+          'both': '1·2일전',
+          '1': '1일전',
+          '2': '2일전',
           '0': '당일만'
         };
         const rLabel = remindLabelMap[sub.remindBefore || 'both'];
 
         const row = document.createElement('div');
-        row.className = 'flex justify-between items-center py-2 text-[13px]';
+        row.className = 'flex justify-between items-center gap-2 py-2.5 text-[13px]';
         row.innerHTML = `
-          <div class="flex items-center gap-1.5 flex-wrap">
-            <span class="text-[11px] bg-[#BF5AF2]/20 text-[#BF5AF2] px-2 py-0.5 rounded-md font-bold">매월 ${sub.day}일</span>
+          <div class="flex items-center gap-1.5 min-w-0 flex-wrap">
+            <span class="no-wrap-chip text-[11px] bg-[#BF5AF2]/20 text-[#BF5AF2] px-2 py-0.5 rounded-md font-bold">매월 ${sub.day}일</span>
             ${dBadge}
-            <span class="font-semibold text-white">${sub.title}</span>
-            <span class="text-[10px] text-[#8E8E93]">(${rLabel})</span>
+            <span class="font-semibold text-white truncate">${sub.title}</span>
+            <span class="text-[10px] text-[#8E8E93] whitespace-nowrap">(${rLabel})</span>
           </div>
           <div class="flex items-center gap-2 shrink-0">
-            <span class="font-bold text-slate-200">${Number(sub.amount).toLocaleString()}원</span>
-            <button onclick="deleteSubscription(${sub.id})" class="text-[11px] text-[#FF453A] hover:underline">삭제</button>
+            <span class="font-bold text-slate-200 whitespace-nowrap">${Number(sub.amount).toLocaleString()}원</span>
+            <button onclick="deleteSubscription(${sub.id})" class="ios-btn text-[11px] text-[#FF453A] px-1.5 py-0.5 rounded bg-[#FF453A]/10">삭제</button>
           </div>
         `;
         listEl.appendChild(row);
@@ -1066,7 +1147,8 @@
       totalEl.innerText = `${monthlySum.toLocaleString()}원`;
     }
 
-    function promptVaultGoal() {
+    // --- 목표 저축 금고 (클라우드 양방향 완벽 연동) ---
+    async function promptVaultGoal() {
       const nameInput = prompt('🐷 저축 목표 이름을 입력해 주세요 (예: 아이패드 매직키보드, 여행 자금):', savingsVault.name || '목표 저축 금고');
       if (nameInput === null) return;
       const targetInput = prompt('🎯 목표 금액은 얼마인가요? (숫자만 입력):', savingsVault.target || 300000);
@@ -1080,11 +1162,12 @@
 
       savingsVault.name = nameInput.trim() || '목표 저축 금고';
       savingsVault.target = targetNum;
-      saveVault();
+      savingsVault.updatedAt = Date.now();
+      await saveVaultToCloud();
       renderVaultUI();
     }
 
-    function modifyVaultSaved(direction) {
+    async function modifyVaultSaved(direction) {
       const label = direction > 0 ? '얼마를 저축 금고에 넣을까요?' : '얼마를 저축 금고에서 뺄까요?';
       const input = prompt(`🐷 ${label} (숫자만 입력):`, '10000');
       if (input === null) return;
@@ -1095,14 +1178,19 @@
       }
 
       savingsVault.saved = Math.max(0, (Number(savingsVault.saved) || 0) + (amt * direction));
-      saveVault();
+      savingsVault.updatedAt = Date.now();
+      await saveVaultToCloud();
       renderVaultUI();
+
+      if (direction > 0) {
+        fireCelebrationParticles('gold');
+      }
     }
 
-    function saveVault() {
+    async function saveVaultToCloud() {
       localStorage.setItem('savings_vault_v6', JSON.stringify(savingsVault));
       if (supabaseClient) {
-        supabaseClient.from('ledger').upsert([{
+        await supabaseClient.from('ledger').upsert([{
           id: VAULT_SYNC_ID,
           title: JSON.stringify(savingsVault),
           amount: Number(savingsVault.saved) || 0,
@@ -1142,7 +1230,7 @@
     }
 
     function renderCalendarUI() {
-      document.getElementById('calendarTitle').innerText = `${calYear}년 ${calMonth + 1}월 소비 캘린더`;
+      document.getElementById('calendarTitle').innerText = `${calMonth + 1}월 소비 캘린더`;
       const grid = document.getElementById('calendarGrid');
       grid.innerHTML = '';
 
@@ -1177,7 +1265,7 @@
         const isToday = (now.getFullYear() === calYear && now.getMonth() === calMonth && now.getDate() === d);
         const isPastOrToday = new Date(calYear, calMonth, d) <= new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-        cell.className = `cal-cell p-1.5 flex flex-col justify-between items-center text-center ${isToday ? 'cal-today' : ''}`;
+        cell.className = `cal-cell p-1 flex flex-col justify-between items-center text-center ${isToday ? 'cal-today' : ''}`;
 
         const exp = dailyMap[d].expense;
         const inc = dailyMap[d].income;
@@ -1185,26 +1273,26 @@
         let bottomHtml = '';
         if (exp === 0 && isPastOrToday) {
           noSpendDays++;
-          bottomHtml = `<span class="text-[10px] text-[#30D158] font-bold">🌱무지출</span>`;
+          bottomHtml = `<span class="text-[9px] sm:text-[10px] text-[#30D158] font-bold whitespace-nowrap">🌱무지출</span>`;
         } else {
           if (exp > 0) {
             const shortExp = exp >= 10000 ? `${(exp / 10000).toFixed(1).replace(/\.0$/, '')}만` : exp.toLocaleString();
-            bottomHtml += `<span class="text-[10px] text-[#FF453A] font-bold block leading-tight">-${shortExp}</span>`;
+            bottomHtml += `<span class="text-[9px] sm:text-[10px] text-[#FF453A] font-bold block leading-tight whitespace-nowrap">-${shortExp}</span>`;
           }
           if (inc > 0) {
             const shortInc = inc >= 10000 ? `${(inc / 10000).toFixed(1).replace(/\.0$/, '')}만` : inc.toLocaleString();
-            bottomHtml += `<span class="text-[9px] text-[#30D158] font-semibold block leading-tight">+${shortInc}</span>`;
+            bottomHtml += `<span class="text-[9px] text-[#30D158] font-semibold block leading-tight whitespace-nowrap">+${shortInc}</span>`;
           }
         }
 
         cell.innerHTML = `
           <span class="text-[11px] font-bold ${isToday ? 'text-[#0A84FF]' : 'text-slate-300'}">${d}</span>
-          <div class="mt-0.5">${bottomHtml}</div>
+          <div class="mt-0.5 overflow-hidden">${bottomHtml}</div>
         `;
         grid.appendChild(cell);
       }
 
-      document.getElementById('noSpendCountBadge').innerText = `🌱 무지출 ${noSpendDays}일 성공`;
+      document.getElementById('noSpendCountBadge').innerText = `🌱 무지출 ${noSpendDays}일`;
     }
 
     function handleSearchInput(val) {
@@ -1245,6 +1333,7 @@
       if (perm === 'granted') {
         document.getElementById('notifBtnText').innerText = '알림 켜짐';
         document.getElementById('notifBtn').classList.replace('text-[#FF9F0A]', 'text-[#30D158]');
+        fireCelebrationParticles('default');
         new Notification('나의 가계부 스마트 알림 연동 완료', {
           body: `잔액 부족(3,000원 근접 포함), 정기결제 사전 알림, 밤 11시 리마인더가 켜졌습니다.`,
           icon: 'https://cdn-icons-png.flaticon.com/512/3135/3135706.png'
@@ -1372,7 +1461,8 @@
         supabaseClient = window.supabase.createClient(url, key);
         const ok = await syncWithCloud(true);
         if (ok) {
-          alert('☁️ 클라우드 연결 완료! 모든 데이터와 정기결제·저축금고가 동기화됩니다.');
+          fireCelebrationParticles('gold');
+          alert('☁️ 클라우드 연결 완료! 이제 내역·정기결제·저축금고·예산이 모두 실시간 동기화됩니다.');
           toggleConfig();
         }
       } catch (err) {
@@ -1381,6 +1471,7 @@
       }
     }
 
+    // --- [핵심 업그레이드] 정기결제·저금통·예산·내역 완벽 양방향 동기화 ---
     async function syncWithCloud(showError = false) {
       if (!supabaseClient || isSyncing) return false;
       isSyncing = true;
@@ -1408,41 +1499,84 @@
         }
 
         if (Array.isArray(data)) {
+          // 1. 목표 예산 양방향 동기화
           const cloudBudget = data.find(item => Number(item.id) === BUDGET_SYNC_ID);
           if (cloudBudget) {
             monthlyBudget = Number(cloudBudget.amount) || 0;
             localStorage.setItem('monthly_budget_v5', monthlyBudget);
+          } else if (monthlyBudget > 0) {
+            await supabaseClient.from('ledger').upsert([{
+              id: BUDGET_SYNC_ID,
+              title: '__SYSTEM_BUDGET__',
+              amount: monthlyBudget,
+              type: 'system',
+              category: 'system',
+              created_at: new Date().toISOString()
+            }]);
           }
 
+          // 2. 기초 통장 잔고 보정값 양방향 동기화
           const cloudBase = data.find(item => Number(item.id) === BASE_BALANCE_SYNC_ID);
           if (cloudBase) {
             const sign = cloudBase.category === 'negative' ? -1 : 1;
             baseBalanceOffset = (Number(cloudBase.amount) || 0) * sign;
             localStorage.setItem('base_balance_offset_v5', baseBalanceOffset);
+          } else if (baseBalanceOffset !== 0) {
+            await supabaseClient.from('ledger').upsert([{
+              id: BASE_BALANCE_SYNC_ID,
+              title: '__SYSTEM_BASE_BALANCE__',
+              amount: Math.abs(baseBalanceOffset),
+              type: 'system',
+              category: baseBalanceOffset < 0 ? 'negative' : 'positive',
+              created_at: new Date().toISOString()
+            }]);
           }
 
+          // 3. 부족 알림 기준 양방향 동기화
           const cloudAlert = data.find(item => Number(item.id) === MIN_BALANCE_ALERT_ID);
           if (cloudAlert) {
             minBalanceAlert = Number(cloudAlert.amount) || 10000;
             localStorage.setItem('min_balance_alert_v5', minBalanceAlert);
+          } else if (minBalanceAlert !== 10000) {
+            await supabaseClient.from('ledger').upsert([{
+              id: MIN_BALANCE_ALERT_ID,
+              title: '__SYSTEM_MIN_ALERT__',
+              amount: minBalanceAlert,
+              type: 'system',
+              category: 'system',
+              created_at: new Date().toISOString()
+            }]);
           }
 
+          // 4. 정기 결제(구독) 목록 양방향 병합 및 동기화
           const cloudSubs = data.find(item => Number(item.id) === SUBSCRIPTIONS_SYNC_ID);
           if (cloudSubs && cloudSubs.title) {
             try {
-              subscriptions = JSON.parse(cloudSubs.title);
-              localStorage.setItem('subscriptions_v6', JSON.stringify(subscriptions));
+              const parsedCloudSubs = JSON.parse(cloudSubs.title);
+              if (Array.isArray(parsedCloudSubs)) {
+                subscriptions = parsedCloudSubs;
+                localStorage.setItem('subscriptions_v6', JSON.stringify(subscriptions));
+              }
             } catch (e) {}
+          } else if (subscriptions.length > 0) {
+            await saveSubscriptionsToCloud();
           }
 
+          // 5. 목표 저축 금고(저금통) 양방향 동기화
           const cloudVault = data.find(item => Number(item.id) === VAULT_SYNC_ID);
           if (cloudVault && cloudVault.title) {
             try {
-              savingsVault = JSON.parse(cloudVault.title);
-              localStorage.setItem('savings_vault_v6', JSON.stringify(savingsVault));
+              const parsedVault = JSON.parse(cloudVault.title);
+              if (parsedVault && typeof parsedVault === 'object') {
+                savingsVault = parsedVault;
+                localStorage.setItem('savings_vault_v6', JSON.stringify(savingsVault));
+              }
             } catch (e) {}
+          } else if (savingsVault.target > 0 || savingsVault.saved > 0) {
+            await saveVaultToCloud();
           }
 
+          // 6. 일반 가계부 내역 동기화
           const cloudEntries = data.filter(item => {
             const numId = Number(item.id);
             return !SYSTEM_IDS.has(numId) &&
@@ -1480,7 +1614,7 @@
           renderUI();
 
           document.getElementById('syncDot').className = 'w-2 h-2 rounded-full bg-[#0A84FF] inline-block';
-          document.getElementById('syncStatus').innerText = '실시간 동기화 켜짐';
+          document.getElementById('syncStatus').innerText = '실시간 동기화 완료';
           isSyncing = false;
           return true;
         }
@@ -1585,7 +1719,7 @@
 
       if (keys.length > 0) {
         const label = document.createElement('span');
-        label.className = 'text-[11px] text-[#8E8E93] self-center mr-1 font-medium';
+        label.className = 'text-[11px] text-[#8E8E93] self-center mr-1 font-medium whitespace-nowrap';
         label.innerText = '자주 쓰는 기억:';
         chipsContainer.appendChild(label);
 
@@ -1778,12 +1912,16 @@
           document.getElementById('ledgerForm').reset();
           setEntryType('expense');
           document.getElementById('memoryBadge').classList.add('hidden');
+
+          // 수입 등록 시 축하 파티클 발사!
+          if (type === 'income') {
+            fireCelebrationParticles('gold');
+          }
         }
 
         buildMemoryBank();
         renderUI();
 
-        // 지출 추가 또는 내역 수정 시 즉시 2단계 잔액 부족(3,000원 근접 포함) 검사 실행!
         if (type === 'expense') {
           checkAndTriggerBalanceAlert();
         }
@@ -1962,13 +2100,13 @@
         const pct = Math.round((val / thisMonthExpense) * 100);
         const color = CATEGORY_COLORS[cat] || '#8E8E93';
         const item = document.createElement('div');
-        item.className = 'flex items-center justify-between py-1';
+        item.className = 'flex items-center justify-between py-1 gap-2';
         item.innerHTML = `
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 min-w-0">
             <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color: ${color}"></span>
-            <span class="font-semibold text-slate-300">${cat}</span>
+            <span class="font-semibold text-slate-300 truncate">${cat}</span>
           </div>
-          <div class="text-right">
+          <div class="text-right shrink-0 whitespace-nowrap">
             <span class="font-bold text-white">${val.toLocaleString()}원</span>
             <span class="text-[#8E8E93] text-[11px] ml-1">${pct}%</span>
           </div>
@@ -1986,9 +2124,9 @@
         const card = document.createElement('div');
         card.className = 'p-3 rounded-2xl bg-[#2C2C2E]/70 border border-white/5 flex flex-col justify-between';
         card.innerHTML = `
-          <span class="text-[11px] font-bold text-[#FF9F0A]">${medals[idx]}</span>
+          <span class="text-[11px] font-bold text-[#FF9F0A] whitespace-nowrap">${medals[idx]}</span>
           <span class="text-[13px] font-bold text-white truncate mt-1">${title}</span>
-          <span class="text-[13px] font-extrabold text-[#FF453A] mt-0.5">${sum.toLocaleString()}원</span>
+          <span class="text-[13px] font-extrabold text-[#FF453A] mt-0.5 whitespace-nowrap">${sum.toLocaleString()}원</span>
         `;
         top3ListEl.appendChild(card);
       });
@@ -2085,29 +2223,29 @@
         const icon = CATEGORY_ICONS[item.category] || '💳';
 
         const row = document.createElement('div');
-        row.className = 'ios-list-item flex justify-between items-center py-3.5 px-1 rounded-xl';
+        row.className = 'ios-list-item flex justify-between items-center gap-2 py-3.5 px-1 rounded-xl';
         row.style.animationDelay = `${Math.min(index * 0.03, 0.25)}s`;
         row.innerHTML = `
-          <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2.5 min-w-0">
             <div class="w-10 h-10 rounded-2xl bg-[#2C2C2E] flex items-center justify-center text-lg shrink-0 border border-white/5">
               ${icon}
             </div>
-            <div>
-              <div class="flex items-center gap-1.5">
-                <span class="text-[15px] font-bold text-white">${item.title}</span>
-                <span class="text-[11px] text-[#8E8E93] font-medium">${item.category}</span>
+            <div class="min-w-0">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="text-[14px] sm:text-[15px] font-bold text-white truncate">${item.title}</span>
+                <span class="text-[11px] text-[#8E8E93] font-medium whitespace-nowrap">${item.category}</span>
               </div>
               <div class="text-[11px] text-[#8E8E93] mt-0.5">${dateStr}</div>
             </div>
           </div>
-          <div class="flex items-center gap-1.5">
-            <span class="text-[15px] font-bold mr-1.5 ${isInc ? 'text-[#30D158]' : 'text-white'}">
+          <div class="flex items-center gap-1.5 shrink-0">
+            <span class="text-[14px] sm:text-[15px] font-bold mr-1 whitespace-nowrap ${isInc ? 'text-[#30D158]' : 'text-white'}">
               ${isInc ? '+' : '-'}${amt.toLocaleString()}원
             </span>
-            <button type="button" onclick="startEdit(${item.id})" class="ios-btn text-[12px] bg-[#2C2C2E] text-slate-300 font-semibold px-2.5 py-1.5 rounded-full border border-white/5">
+            <button type="button" onclick="startEdit(${item.id})" class="ios-btn text-[11px] sm:text-[12px] bg-[#2C2C2E] text-slate-300 font-semibold px-2.5 py-1.5 rounded-full border border-white/5">
               수정
             </button>
-            <button type="button" onclick="deleteEntry(${item.id})" class="ios-btn text-[12px] bg-[#FF453A]/15 text-[#FF453A] font-semibold px-2.5 py-1.5 rounded-full border border-[#FF453A]/20">
+            <button type="button" onclick="deleteEntry(${item.id})" class="ios-btn text-[11px] sm:text-[12px] bg-[#FF453A]/15 text-[#FF453A] font-semibold px-2.5 py-1.5 rounded-full border border-[#FF453A]/20">
               삭제
             </button>
           </div>
@@ -2120,25 +2258,24 @@
       document.getElementById('totalExpense').innerText = `-${thisMonthExpense.toLocaleString()}원`;
       document.getElementById('totalBalance').innerText = `${finalBalance.toLocaleString()}원`;
 
-      // 2단계 잔액 부족 & 3,000원 근접 경고 배너 실시간 표시
       const warnBanner = document.getElementById('lowBalanceWarningBanner');
       const warnTitle = document.getElementById('lowBalanceTitle');
       const warnDetail = document.getElementById('lowBalanceDetail');
       const nearThreshold = minBalanceAlert + NEAR_BALANCE_BUFFER;
 
       if (finalBalance <= minBalanceAlert) {
-        warnBanner.className = 'mt-2.5 p-3 bg-[#FF453A]/15 border border-[#FF453A]/40 rounded-2xl flex items-center justify-between';
-        warnTitle.className = 'text-xs text-[#FF453A] font-bold';
+        warnBanner.className = 'mt-2.5 p-3 bg-[#FF453A]/15 border border-[#FF453A]/40 rounded-2xl flex items-center justify-between gap-2';
+        warnTitle.className = 'text-xs text-[#FF453A] font-bold whitespace-nowrap';
         warnTitle.innerText = '🚨 잔액 부족 위험 경고!';
-        warnDetail.className = 'text-[11px] text-[#FF453A] font-semibold';
+        warnDetail.className = 'text-[11px] text-[#FF453A] font-semibold text-right';
         warnDetail.innerText = `기준(${minBalanceAlert.toLocaleString()}원) 이하`;
       } else if (finalBalance <= nearThreshold) {
         const diff = finalBalance - minBalanceAlert;
-        warnBanner.className = 'mt-2.5 p-3 bg-[#FF9F0A]/15 border border-[#FF9F0A]/40 rounded-2xl flex items-center justify-between';
-        warnTitle.className = 'text-xs text-[#FF9F0A] font-bold';
+        warnBanner.className = 'mt-2.5 p-3 bg-[#FF9F0A]/15 border border-[#FF9F0A]/40 rounded-2xl flex items-center justify-between gap-2';
+        warnTitle.className = 'text-xs text-[#FF9F0A] font-bold whitespace-nowrap';
         warnTitle.innerText = '⚡ 잔액 부족 근접 주의!';
-        warnDetail.className = 'text-[11px] text-[#FF9F0A] font-semibold';
-        warnDetail.innerText = `기준까지 딱 ${diff.toLocaleString()}원 남음`;
+        warnDetail.className = 'text-[11px] text-[#FF9F0A] font-semibold text-right';
+        warnDetail.innerText = `기준까지 ${diff.toLocaleString()}원 남음`;
       } else {
         warnBanner.classList.add('hidden');
       }
