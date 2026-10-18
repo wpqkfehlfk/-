@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="가계부">
-  <title>스마트 가계부 iOS Dark v5.1</title>
+  <title>스마트 가계부 iOS Dark v5.2</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -116,12 +116,13 @@
 </head>
 <body class="min-h-screen pb-24">
 
+  <!-- 상단 헤더 -->
   <header class="ios-glass-header pt-11 pb-3.5 px-5 sticky top-0 z-30">
     <div class="max-w-5xl mx-auto flex justify-between items-center">
       <div>
         <div class="flex items-center gap-2">
           <h1 class="text-[22px] font-extrabold tracking-tight text-white">나의 가계부</h1>
-          <span class="text-[10px] bg-[#0A84FF]/20 text-[#0A84FF] px-2 py-0.5 rounded-full font-bold border border-[#0A84FF]/30">v5.1 알림탑재</span>
+          <span class="text-[10px] bg-[#0A84FF]/20 text-[#0A84FF] px-2 py-0.5 rounded-full font-bold border border-[#0A84FF]/30">v5.2 검색탑재</span>
         </div>
         <div class="flex items-center gap-1.5 mt-0.5">
           <span id="syncDot" class="w-2 h-2 rounded-full bg-[#30D158] inline-block transition-colors duration-300"></span>
@@ -141,6 +142,7 @@
     </div>
   </header>
 
+  <!-- 클라우드 연동 설정 모달 -->
   <div id="configModal" class="hidden max-w-5xl mx-auto mt-3 px-4">
     <div class="ios-card p-5 border border-[#0A84FF]/40 animate-ios-in">
       <div class="flex justify-between items-start mb-2">
@@ -167,10 +169,13 @@
     </div>
   </div>
 
+  <!-- 메인 컨텐츠 -->
   <main class="max-w-5xl mx-auto mt-5 px-4 grid grid-cols-1 md:grid-cols-12 gap-5">
     
+    <!-- 왼쪽/상단 컬럼 -->
     <section class="md:col-span-5 space-y-5">
       
+      <!-- 1. 통장 잔액 & 예산 카드 -->
       <div class="ios-card p-6 animate-ios-in" style="animation-delay: 0.02s;">
         <div class="flex justify-between items-center">
           <span class="text-[12px] font-semibold text-[#8E8E93]">현재 내 통장 잔액</span>
@@ -225,6 +230,7 @@
         </div>
       </div>
 
+      <!-- 2. 한 줄 빠른 입력 -->
       <div class="ios-card p-5 border border-[#0A84FF]/25 animate-ios-in" style="animation-delay: 0.06s;">
         <div class="flex justify-between items-center mb-2">
           <div class="flex items-center gap-1.5">
@@ -244,6 +250,7 @@
         <p id="quickPreview" class="text-[12px] text-[#0A84FF] mt-2.5 hidden font-semibold bg-[#0A84FF]/10 px-3 py-1.5 rounded-xl border border-[#0A84FF]/20"></p>
       </div>
 
+      <!-- 3. 내역 상세 기록 및 수정 폼 -->
       <div id="formCard" class="ios-card p-6 animate-ios-in" style="animation-delay: 0.1s;">
         <div class="flex justify-between items-center mb-4">
           <h2 id="formTitle" class="text-[16px] font-bold text-white">내역 상세 기록</h2>
@@ -305,8 +312,10 @@
       </div>
     </section>
 
+    <!-- 오른쪽/하단 컬럼 -->
     <section class="md:col-span-7 space-y-5">
       
+      <!-- 4. 이번 달 지출 분석 도넛 차트 -->
       <div class="ios-card p-6 animate-ios-in" style="animation-delay: 0.14s;">
         <div class="flex justify-between items-center mb-4">
           <h2 id="chartMonthTitle" class="text-[16px] font-bold text-white">📊 이번 달 지출 분석</h2>
@@ -325,17 +334,45 @@
         </div>
       </div>
 
-      <div class="ios-card p-6 min-h-[380px] animate-ios-in" style="animation-delay: 0.18s;">
+      <!-- 5. 내역 검색 & 최근 기록 내역 리스트 -->
+      <div class="ios-card p-6 min-h-[420px] animate-ios-in" style="animation-delay: 0.18s;">
         <div class="flex justify-between items-center mb-4">
           <div>
             <h2 class="text-[16px] font-bold text-white">최근 기록 내역</h2>
-            <p class="text-[11px] text-[#8E8E93] mt-0.5">내역을 눌러 언제든 수정하거나 삭제할 수 있어요</p>
+            <p class="text-[11px] text-[#8E8E93] mt-0.5">내역을 검색하면 해당 항목에 쓴 총금액을 바로 알려드려요</p>
           </div>
           <button onclick="syncWithCloud(true)" class="ios-btn text-[12px] bg-[#2C2C2E] hover:bg-[#3A3A3C] text-[#0A84FF] px-3.5 py-1.5 rounded-full font-semibold flex items-center gap-1 border border-white/5">
             <span>🔄</span>
             <span>동기화</span>
           </button>
         </div>
+
+        <!-- iOS 스타일 실시간 검색 바 -->
+        <div class="relative mb-3">
+          <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8E8E93] text-sm pointer-events-none">🔍</span>
+          <input id="searchInput" type="text" placeholder="내역 이름이나 카테고리 검색 (예: 커피, 편의점, 식비)"
+            oninput="handleSearchInput(this.value)"
+            class="ios-input w-full pl-9 pr-9 py-2.5 text-[13px]">
+          <button id="clearSearchBtn" type="button" onclick="clearSearch()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-[#636366] text-black text-[11px] font-extrabold flex items-center justify-center">
+            ✕
+          </button>
+        </div>
+
+        <!-- 검색 결과 합계 요약 배너 (검색어 입력 시 자동 표시) -->
+        <div id="searchSummaryCard" class="hidden mb-4 p-4 rounded-2xl bg-[#2C2C2E]/90 border border-[#0A84FF]/30 animate-ios-in">
+          <div class="flex justify-between items-center">
+            <div>
+              <span id="searchKeywordLabel" class="text-[12px] font-bold text-[#0A84FF]"></span>
+              <p id="searchCountLabel" class="text-[11px] text-[#8E8E93] mt-0.5"></p>
+            </div>
+            <div class="text-right">
+              <span class="text-[11px] text-[#8E8E93] block">검색 항목 총 사용 금액</span>
+              <span id="searchTotalExpense" class="text-[18px] font-extrabold text-[#FF453A]">0원</span>
+              <span id="searchTotalIncome" class="hidden text-[12px] font-bold text-[#30D158] block mt-0.5"></span>
+            </div>
+          </div>
+        </div>
+
         <div id="entryList" class="divide-y divide-white/10"></div>
       </div>
 
@@ -350,6 +387,7 @@
     let editingId = null;
     let isSyncing = false;
     let isSaving = false;
+    let currentSearchQuery = '';
 
     const BUDGET_SYNC_ID = 9999999999999;
     const BASE_BALANCE_SYNC_ID = 9999999999998;
@@ -357,7 +395,7 @@
 
     let monthlyBudget = Number(localStorage.getItem('monthly_budget_v5')) || 0;
     let baseBalanceOffset = Number(localStorage.getItem('base_balance_offset_v5')) || 0;
-    let minBalanceAlert = Number(localStorage.getItem('min_balance_alert_v5')) || 10000; // 기본 1만원 미만 시 경고
+    let minBalanceAlert = Number(localStorage.getItem('min_balance_alert_v5')) || 10000;
     let deletedIds = new Set(JSON.parse(localStorage.getItem('deleted_ledger_ids_v5') || '[]'));
     let chartInstance = null;
 
@@ -405,6 +443,25 @@
       });
     };
 
+    // 실시간 검색 핸들러
+    function handleSearchInput(val) {
+      currentSearchQuery = val.trim();
+      const clearBtn = document.getElementById('clearSearchBtn');
+      if (currentSearchQuery.length > 0) {
+        clearBtn.classList.remove('hidden');
+      } else {
+        clearBtn.classList.add('hidden');
+      }
+      renderUI();
+    }
+
+    function clearSearch() {
+      currentSearchQuery = '';
+      document.getElementById('searchInput').value = '';
+      document.getElementById('clearSearchBtn').classList.add('hidden');
+      renderUI();
+    }
+
     function checkNotifStatus() {
       if (!('Notification' in window)) {
         document.getElementById('notifBtn').classList.add('hidden');
@@ -437,7 +494,6 @@
     function triggerLowBalanceAlert(currentBal) {
       const msg = `⚠️ 잔액 부족 주의!\n현재 잔액이 ${currentBal.toLocaleString()}원으로, 설정한 알림 기준(${minBalanceAlert.toLocaleString()}원) 이하입니다.`;
       
-      // 1. 브라우저 시스템 알림
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification('🚨 가계부 잔액 부족 경고', {
           body: `현재 통장 잔액: ${currentBal.toLocaleString()}원 (기준치 이하)`,
@@ -445,7 +501,6 @@
         });
       }
 
-      // 2. 화면 내 팝업 경고창
       setTimeout(() => alert(msg), 150);
     }
 
@@ -957,7 +1012,6 @@
         buildMemoryBank();
         renderUI();
 
-        // 지출 등록 후 새로운 잔액이 기준 미만이면 즉시 알림 트리거
         if (type === 'expense') {
           const curBal = baseBalanceOffset + getNetEntriesFlow();
           if (curBal <= minBalanceAlert) {
@@ -1150,14 +1204,8 @@
       const currentYear = now.getFullYear();
       const currentMonth = now.getMonth();
 
-      const listEl = document.getElementById('entryList');
-      listEl.innerHTML = '';
-
-      if (entries.length === 0) {
-        listEl.innerHTML = '<div class="text-[13px] text-[#8E8E93] py-14 text-center">아직 내역이 없습니다.<br>위에서 "용돈 2000" 또는 "밥4000"을 입력해 보세요!</div>';
-      }
-
-      entries.forEach((item, index) => {
+      // 1. 전체 잔액 및 당월 차트 계산은 검색어와 무관하게 전체 내역 기준으로 유지
+      entries.forEach(item => {
         const itemDate = new Date(item.created_at || Date.now());
         const isThisMonth = itemDate.getFullYear() === currentYear && itemDate.getMonth() === currentMonth;
         const amt = Math.abs(Number(item.amount) || 0);
@@ -1172,7 +1220,60 @@
             categoryTotals[item.category] = (categoryTotals[item.category] || 0) + amt;
           }
         }
+      });
 
+      // 2. 검색어 필터링 및 검색된 항목의 사용 금액 합계 계산
+      const queryLower = currentSearchQuery.toLowerCase();
+      const filteredEntries = currentSearchQuery
+        ? entries.filter(item =>
+            (item.title && item.title.toLowerCase().includes(queryLower)) ||
+            (item.category && item.category.toLowerCase().includes(queryLower))
+          )
+        : entries;
+
+      const searchSummaryCard = document.getElementById('searchSummaryCard');
+      if (currentSearchQuery.length > 0) {
+        let searchExpenseSum = 0;
+        let searchIncomeSum = 0;
+
+        filteredEntries.forEach(item => {
+          const amt = Math.abs(Number(item.amount) || 0);
+          if (item.type === 'income') searchIncomeSum += amt;
+          else searchExpenseSum += amt;
+        });
+
+        document.getElementById('searchKeywordLabel').innerText = `🔍 "${currentSearchQuery}" 검색 분석`;
+        document.getElementById('searchCountLabel').innerText = `총 ${filteredEntries.length}건의 기록이 검색됨`;
+        document.getElementById('searchTotalExpense').innerText = `-${searchExpenseSum.toLocaleString()}원`;
+
+        const incEl = document.getElementById('searchTotalIncome');
+        if (searchIncomeSum > 0) {
+          incEl.innerText = `(수입 합계: +${searchIncomeSum.toLocaleString()}원)`;
+          incEl.classList.remove('hidden');
+        } else {
+          incEl.classList.add('hidden');
+        }
+
+        searchSummaryCard.classList.remove('hidden');
+      } else {
+        searchSummaryCard.classList.add('hidden');
+      }
+
+      // 3. 리스트 렌더링
+      const listEl = document.getElementById('entryList');
+      listEl.innerHTML = '';
+
+      if (filteredEntries.length === 0) {
+        if (currentSearchQuery.length > 0) {
+          listEl.innerHTML = `<div class="text-[13px] text-[#8E8E93] py-12 text-center">"${currentSearchQuery}"에 해당하는 내역이 없습니다.</div>`;
+        } else {
+          listEl.innerHTML = '<div class="text-[13px] text-[#8E8E93] py-14 text-center">아직 내역이 없습니다.<br>위에서 "용돈 2000" 또는 "밥4000"을 입력해 보세요!</div>';
+        }
+      }
+
+      filteredEntries.forEach((item, index) => {
+        const itemDate = new Date(item.created_at || Date.now());
+        const amt = Math.abs(Number(item.amount) || 0);
         const dateStr = itemDate.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
         const isInc = item.type === 'income';
         const icon = CATEGORY_ICONS[item.category] || '💳';
@@ -1213,7 +1314,6 @@
       document.getElementById('totalExpense').innerText = `-${thisMonthExpense.toLocaleString()}원`;
       document.getElementById('totalBalance').innerText = `${finalBalance.toLocaleString()}원`;
 
-      // 잔액 부족 상태 배너 표시
       const warnBanner = document.getElementById('lowBalanceWarningBanner');
       const warnDetail = document.getElementById('lowBalanceDetail');
       if (finalBalance <= minBalanceAlert) {
