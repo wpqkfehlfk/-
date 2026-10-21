@@ -6,11 +6,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="가계부">
-  <title>스마트 가계부 iOS Dark v7.0 Ultra</title>
+  <title>스마트 가계부 iOS Dark v8.0 Ultimate</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- 부드러운 파티클(꽃가루) 애니메이션 엔진 -->
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
   <style>
     :root {
@@ -27,7 +26,6 @@
     }
 
     * {
-      /* 핵심: 한글 단어가 중간에 어색하게 끊겨서 다음 줄로 내려가는 현상 원천 방지 */
       word-break: keep-all;
       overflow-wrap: break-word;
     }
@@ -41,14 +39,13 @@
       overflow-x: hidden;
     }
 
-    /* 모든 버튼과 배지 내부 글씨가 절대 두 줄로 쪼개지지 않도록 고정 */
     button, .no-wrap-chip {
       white-space: nowrap;
       flex-shrink: 0;
     }
 
     .ios-glass-header {
-      background: rgba(28, 28, 30, 0.8);
+      background: rgba(28, 28, 30, 0.82);
       backdrop-filter: saturate(180%) blur(24px);
       -webkit-backdrop-filter: saturate(180%) blur(24px);
       border-bottom: 0.5px solid rgba(255, 255, 255, 0.1);
@@ -130,7 +127,6 @@
       transform: scale(0.99);
     }
 
-    /* 캘린더 접기/펼치기 부드러운 아코디언 애니메이션 */
     .cal-collapse-wrapper {
       display: grid;
       grid-template-rows: 0fr;
@@ -157,17 +153,108 @@
       border: 1.5px solid var(--ios-blue);
       background-color: rgba(10, 132, 255, 0.14);
     }
+
+    /* 전체화면 잠금 오버레이 스타일 */
+    #iosLockOverlay {
+      background: rgba(0, 0, 0, 0.92);
+      backdrop-filter: saturate(180%) blur(40px);
+      -webkit-backdrop-filter: saturate(180%) blur(40px);
+      transition: opacity 0.38s var(--spring-easing), transform 0.38s var(--spring-easing);
+    }
+    #iosLockOverlay.unlock-hide {
+      opacity: 0;
+      transform: scale(1.06);
+      pointer-events: none;
+    }
+    .pin-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(255, 255, 255, 0.55);
+      transition: all 0.18s var(--spring-easing);
+    }
+    .pin-dot.filled {
+      background-color: #FFFFFF;
+      border-color: #FFFFFF;
+      transform: scale(1.12);
+    }
+    .ios-numpad-btn {
+      width: 74px;
+      height: 74px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.12);
+      color: #FFFFFF;
+      font-size: 28px;
+      font-weight: 500;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      transition: background-color 0.15s ease, transform 0.15s ease;
+    }
+    .ios-numpad-btn:active {
+      background: rgba(255, 255, 255, 0.35);
+      transform: scale(0.93);
+    }
+    @keyframes iosPinShake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-12px); }
+      40%, 80% { transform: translateX(12px); }
+    }
+    .animate-pin-shake {
+      animation: iosPinShake 0.4s ease-in-out;
+    }
   </style>
 </head>
 <body class="min-h-screen pb-28">
 
-  <!-- 상단 고정 블러 헤더 (아이폰/아이패드 줄바꿈 방지 완료) -->
+  <!-- 1. 전체 화면 iOS 보안 잠금 오버레이 (Face ID & 4자리 PIN) -->
+  <div id="iosLockOverlay" class="hidden fixed inset-0 z-[9999] flex flex-col items-center justify-center px-6 select-none">
+    <div class="text-center mb-7">
+      <div class="text-3xl mb-2">🔒</div>
+      <h2 id="lockStatusTitle" class="text-[19px] font-bold text-white tracking-tight">비밀번호 입력</h2>
+      <p id="lockStatusSub" class="text-[12px] text-[#8E8E93] mt-1">가계부를 열려면 암호를 입력하거나 Face ID를 사용하세요</p>
+    </div>
+
+    <div id="pinDotsBox" class="flex gap-5 mb-10">
+      <div class="pin-dot"></div>
+      <div class="pin-dot"></div>
+      <div class="pin-dot"></div>
+      <div class="pin-dot"></div>
+    </div>
+
+    <div class="grid grid-cols-3 gap-x-6 gap-y-4">
+      <button type="button" onclick="pressPinDigit('1')" class="ios-numpad-btn">1</button>
+      <button type="button" onclick="pressPinDigit('2')" class="ios-numpad-btn">2</button>
+      <button type="button" onclick="pressPinDigit('3')" class="ios-numpad-btn">3</button>
+      <button type="button" onclick="pressPinDigit('4')" class="ios-numpad-btn">4</button>
+      <button type="button" onclick="pressPinDigit('5')" class="ios-numpad-btn">5</button>
+      <button type="button" onclick="pressPinDigit('6')" class="ios-numpad-btn">6</button>
+      <button type="button" onclick="pressPinDigit('7')" class="ios-numpad-btn">7</button>
+      <button type="button" onclick="pressPinDigit('8')" class="ios-numpad-btn">8</button>
+      <button type="button" onclick="pressPinDigit('9')" class="ios-numpad-btn">9</button>
+
+      <button type="button" id="faceIdTriggerBtn" onclick="unlockWithFaceID()" class="w-[74px] h-[74px] rounded-full flex flex-col items-center justify-center text-[#0A84FF] active:scale-90 transition">
+        <span class="text-2xl">🪪</span>
+        <span class="text-[10px] font-bold mt-0.5">Face ID</span>
+      </button>
+
+      <button type="button" onclick="pressPinDigit('0')" class="ios-numpad-btn">0</button>
+
+      <button type="button" onclick="deletePinDigit()" class="w-[74px] h-[74px] rounded-full flex items-center justify-center text-white text-xl active:scale-90 transition">
+        ⌫
+      </button>
+    </div>
+  </div>
+
+  <!-- 상단 고정 블러 헤더 -->
   <header class="ios-glass-header pt-11 pb-3.5 px-4 sm:px-6 sticky top-0 z-30">
     <div class="max-w-5xl mx-auto flex justify-between items-center gap-2">
       <div class="min-w-0">
         <div class="flex items-center gap-1.5">
           <h1 class="text-[19px] sm:text-[22px] font-extrabold tracking-tight text-white truncate">나의 가계부</h1>
-          <span class="no-wrap-chip text-[10px] bg-[#BF5AF2]/20 text-[#BF5AF2] px-2 py-0.5 rounded-full font-bold border border-[#BF5AF2]/30">v7.0 Ultra</span>
+          <span class="no-wrap-chip text-[10px] bg-[#BF5AF2]/20 text-[#BF5AF2] px-2 py-0.5 rounded-full font-bold border border-[#BF5AF2]/30">v8.0 Ultimate</span>
         </div>
         <div class="flex items-center gap-1.5 mt-0.5">
           <span id="syncDot" class="w-2 h-2 rounded-full bg-[#30D158] inline-block shrink-0 transition-colors duration-300"></span>
@@ -175,6 +262,10 @@
         </div>
       </div>
       <div class="flex items-center gap-1.5 shrink-0">
+        <button onclick="toggleSecurityModal()" class="ios-btn text-[11px] bg-[#2C2C2E] hover:bg-[#3A3A3C] text-[#BF5AF2] px-2.5 py-2 rounded-full font-semibold border border-white/10 flex items-center gap-1">
+          <span>🔒</span>
+          <span>잠금</span>
+        </button>
         <button onclick="openNightReminderModal()" class="ios-btn text-[11px] bg-[#2C2C2E] hover:bg-[#3A3A3C] text-[#30D158] px-2.5 py-2 rounded-full font-semibold border border-white/10 flex items-center gap-1">
           <span>⏰</span>
           <span>11시 알림</span>
@@ -190,6 +281,57 @@
       </div>
     </div>
   </header>
+
+  <!-- 보안 암호 및 Face ID 설정 모달 -->
+  <div id="securitySettingModal" class="hidden max-w-5xl mx-auto mt-3 px-4">
+    <div class="ios-card p-5 border border-[#BF5AF2]/40 animate-ios-in">
+      <div class="flex justify-between items-start mb-2">
+        <div>
+          <h2 class="text-[15px] font-bold text-white flex items-center gap-1.5">
+            <span>🔒</span>
+            <span>가계부 보안 암호 및 Face ID 설정</span>
+          </h2>
+          <p class="text-[12px] text-[#8E8E93] mt-0.5">앱을 나갔다 켤 때마다 화면을 잠그고 Face ID로 안전하게 보호합니다.</p>
+        </div>
+      </div>
+
+      <div class="space-y-2.5 mt-3">
+        <div class="p-3.5 bg-[#2C2C2E]/80 rounded-2xl border border-white/5 flex justify-between items-center gap-2">
+          <div>
+            <span class="text-[13px] font-bold text-white block">4자리 비밀번호 잠금</span>
+            <span id="pinCurrentStateText" class="text-[11px] text-[#8E8E93]">현재 꺼져 있음</span>
+          </div>
+          <div class="flex gap-1.5">
+            <button onclick="setupOrChangePin()" class="ios-btn px-3 py-1.5 rounded-full text-[12px] font-bold bg-[#0A84FF] text-white">
+              암호 설정/변경
+            </button>
+            <button id="disablePinBtn" onclick="disableSecurityLock()" class="hidden ios-btn px-3 py-1.5 rounded-full text-[12px] font-bold bg-[#FF453A]/20 text-[#FF453A]">
+              잠금 끄기
+            </button>
+          </div>
+        </div>
+
+        <div class="p-3.5 bg-[#2C2C2E]/80 rounded-2xl border border-white/5 flex justify-between items-center gap-2">
+          <div>
+            <span class="text-[13px] font-bold text-white block">🪪 Face ID / Touch ID 생체 연동</span>
+            <span id="faceIdStateText" class="text-[11px] text-[#8E8E93]">이 기기에서 얼굴/지문 인식으로 즉시 잠금 해제</span>
+          </div>
+          <button id="regFaceIdBtn" onclick="registerFaceID()" class="ios-btn px-3 py-1.5 rounded-full text-[12px] font-bold bg-[#30D158]/20 text-[#30D158] border border-[#30D158]/30">
+            Face ID 등록
+          </button>
+        </div>
+
+        <div class="flex gap-2 pt-1">
+          <button onclick="lockAppImmediately()" class="ios-btn flex-1 bg-[#2C2C2E] text-[#FF9F0A] text-[12px] font-bold py-2.5 rounded-xl border border-white/10">
+            🔒 지금 바로 화면 잠그기 테스트
+          </button>
+          <button onclick="toggleSecurityModal()" class="ios-btn bg-[#3A3A3C] text-slate-300 text-[12px] font-semibold px-5 py-2.5 rounded-xl">
+            닫기
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- 매일 밤 11시 리마인더 설정 모달 -->
   <div id="nightReminderModal" class="hidden max-w-5xl mx-auto mt-3 px-4">
@@ -245,7 +387,7 @@
       <div class="flex justify-between items-start mb-2">
         <div>
           <h2 class="text-[15px] font-bold text-white">☁️ 아이폰 ↔ 아이패드 실시간 연동 설정</h2>
-          <p class="text-[12px] text-[#8E8E93] mt-0.5">Supabase URL과 Key를 입력하면 내역·정기결제·저축금고·예산이 모두 실시간 연동됩니다.</p>
+          <p class="text-[12px] text-[#8E8E93] mt-0.5">Supabase URL과 Key를 입력하면 내역·정기결제·저축금고·예산·보안암호가 모두 실시간 연동됩니다.</p>
         </div>
       </div>
       <div class="space-y-3 mt-3">
@@ -301,7 +443,6 @@
         </div>
         <div id="totalBalance" class="text-[30px] sm:text-[34px] font-extrabold text-white mt-2 tracking-tight leading-tight">0원</div>
         
-        <!-- 2단계 잔액 부족 & 3,000원 근접 경고 배너 -->
         <div id="lowBalanceWarningBanner" class="hidden mt-2.5 p-3 rounded-2xl flex items-center justify-between gap-2 transition-all duration-300">
           <span id="lowBalanceTitle" class="text-xs font-bold whitespace-nowrap"></span>
           <span id="lowBalanceDetail" class="text-[11px] font-semibold text-right"></span>
@@ -583,7 +724,6 @@
           </button>
         </div>
 
-        <!-- 접혔다 펼쳐지는 달력 본문 영역 -->
         <div id="calendarCollapseWrapper" class="cal-collapse-wrapper">
           <div class="cal-collapse-inner">
             <div class="pt-3 border-t border-white/10 flex justify-between items-center mb-3">
@@ -662,25 +802,33 @@
     let currentSearchQuery = '';
     let isCalendarOpen = false;
 
+    // 보안 잠금 & Face ID 상태 변수
+    let savedPinCode = localStorage.getItem('ledger_pin_code_v7') || '';
+    let faceIdCoordId = localStorage.getItem('ledger_faceid_cred_v7') || '';
+    let currentTypedPin = '';
+    let isAppUnlocked = false;
+
     const NEAR_BALANCE_BUFFER = 3000;
 
     const todayInit = new Date();
     let calYear = todayInit.getFullYear();
     let calMonth = todayInit.getMonth();
 
-    // 고정 시스템 레코드 ID (내역 외 모든 부가기능을 Supabase ledger 테이블과 100% 양방향 연동)
+    // 고정 시스템 레코드 ID
     const BUDGET_SYNC_ID = 9999999999999;
     const BASE_BALANCE_SYNC_ID = 9999999999998;
     const MIN_BALANCE_ALERT_ID = 9999999999997;
     const SUBSCRIPTIONS_SYNC_ID = 9999999999996;
     const VAULT_SYNC_ID = 9999999999995;
+    const PIN_SYNC_ID = 9999999999994;
 
     const SYSTEM_IDS = new Set([
       BUDGET_SYNC_ID,
       BASE_BALANCE_SYNC_ID,
       MIN_BALANCE_ALERT_ID,
       SUBSCRIPTIONS_SYNC_ID,
-      VAULT_SYNC_ID
+      VAULT_SYNC_ID,
+      PIN_SYNC_ID
     ]);
 
     let monthlyBudget = Number(localStorage.getItem('monthly_budget_v5')) || 0;
@@ -731,18 +879,290 @@
       initCloud();
       checkNotifStatus();
       updateNightReminderUI();
+      updateSecurityModalUI();
       startDaily11PMChecker();
-
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') {
-          checkUpcomingSubscriptionReminders();
-          checkDaily11PMReminder();
-          if (supabaseClient) syncWithCloud(false);
-        }
-      });
+      checkLockOnStart();
     };
 
-    // --- 감각적인 파티클(꽃가루) 효과 함수 ---
+    // --- 앱 켤 때 & 백그라운드 복귀 & 화면 켤 때마다 자동 재잠금 이벤트 감지 ---
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        // 앱을 나가거나 화면이 꺼지면 즉시 잠김 상태로 전환
+        if (savedPinCode && savedPinCode.length === 4) {
+          isAppUnlocked = false;
+        }
+      } else if (document.visibilityState === 'visible') {
+        // 다시 앱으로 돌아왔을 때 즉시 화면 가림 & Face ID 호출
+        if (savedPinCode && savedPinCode.length === 4 && !isAppUnlocked) {
+          showLockScreen();
+          if (faceIdCoordId) {
+            setTimeout(() => unlockWithFaceID(true), 250);
+          }
+        }
+        checkUpcomingSubscriptionReminders();
+        checkDaily11PMReminder();
+        if (supabaseClient) syncWithCloud(false);
+      }
+    });
+
+    window.addEventListener('pageshow', () => {
+      if (savedPinCode && savedPinCode.length === 4 && !isAppUnlocked) {
+        showLockScreen();
+        if (faceIdCoordId) {
+          setTimeout(() => unlockWithFaceID(true), 250);
+        }
+      }
+    });
+
+    // --- 보안 잠금 & Face ID / PIN 번호 제어 ---
+    function checkLockOnStart() {
+      if (savedPinCode && savedPinCode.length === 4 && !isAppUnlocked) {
+        showLockScreen();
+        if (faceIdCoordId) {
+          setTimeout(() => unlockWithFaceID(true), 350);
+        }
+      }
+    }
+
+    function showLockScreen() {
+      currentTypedPin = '';
+      renderPinDots();
+      const overlay = document.getElementById('iosLockOverlay');
+      overlay.classList.remove('hidden', 'unlock-hide');
+
+      const faceTrigger = document.getElementById('faceIdTriggerBtn');
+      if (faceIdCoordId) {
+        faceTrigger.classList.remove('opacity-30');
+      } else {
+        faceTrigger.classList.add('opacity-30');
+      }
+    }
+
+    function hideLockScreen() {
+      isAppUnlocked = true;
+      const overlay = document.getElementById('iosLockOverlay');
+      overlay.classList.add('unlock-hide');
+      setTimeout(() => overlay.classList.add('hidden'), 380);
+    }
+
+    function toggleSecurityModal() {
+      updateSecurityModalUI();
+      document.getElementById('securitySettingModal').classList.toggle('hidden');
+    }
+
+    function updateSecurityModalUI() {
+      const stateText = document.getElementById('pinCurrentStateText');
+      const disableBtn = document.getElementById('disablePinBtn');
+      const faceText = document.getElementById('faceIdStateText');
+      const faceBtn = document.getElementById('regFaceIdBtn');
+
+      if (savedPinCode && savedPinCode.length === 4) {
+        stateText.innerText = '✅ 4자리 암호 잠금 작동 중';
+        stateText.className = 'text-[11px] text-[#30D158] font-semibold';
+        disableBtn.classList.remove('hidden');
+      } else {
+        stateText.innerText = '현재 꺼져 있음 (암호를 먼저 설정해 주세요)';
+        stateText.className = 'text-[11px] text-[#8E8E93]';
+        disableBtn.classList.add('hidden');
+      }
+
+      if (faceIdCoordId) {
+        faceText.innerText = '✅ 이 기기에 Face ID / Touch ID 등록됨';
+        faceText.className = 'text-[11px] text-[#30D158] font-semibold';
+        faceBtn.innerText = '재등록';
+      } else {
+        faceText.innerText = '등록하면 암호 입력 없이 얼굴/지문으로 열립니다';
+        faceText.className = 'text-[11px] text-[#8E8E93]';
+        faceBtn.innerText = 'Face ID 등록';
+      }
+    }
+
+    function lockAppImmediately() {
+      if (!savedPinCode || savedPinCode.length !== 4) {
+        alert('먼저 [암호 설정/변경]을 눌러 4자리 비밀번호를 만들어 주세요!');
+        return;
+      }
+      isAppUnlocked = false;
+      document.getElementById('securitySettingModal').classList.add('hidden');
+      showLockScreen();
+    }
+
+    function pressPinDigit(digit) {
+      if (currentTypedPin.length >= 4) return;
+      currentTypedPin += digit;
+      renderPinDots();
+
+      if (currentTypedPin.length === 4) {
+        setTimeout(verifyPinCode, 120);
+      }
+    }
+
+    function deletePinDigit() {
+      if (currentTypedPin.length > 0) {
+        currentTypedPin = currentTypedPin.slice(0, -1);
+        renderPinDots();
+      }
+    }
+
+    function renderPinDots() {
+      const dots = document.querySelectorAll('#pinDotsBox .pin-dot');
+      dots.forEach((dot, idx) => {
+        if (idx < currentTypedPin.length) dot.classList.add('filled');
+        else dot.classList.remove('filled');
+      });
+    }
+
+    function verifyPinCode() {
+      if (currentTypedPin === savedPinCode) {
+        hideLockScreen();
+      } else {
+        const box = document.getElementById('pinDotsBox');
+        document.getElementById('lockStatusTitle').innerText = '비밀번호가 일치하지 않습니다';
+        document.getElementById('lockStatusTitle').classList.add('text-[#FF453A]');
+        box.classList.add('animate-pin-shake');
+        setTimeout(() => {
+          box.classList.remove('animate-pin-shake');
+          currentTypedPin = '';
+          renderPinDots();
+        }, 420);
+      }
+    }
+
+    async function setupOrChangePin() {
+      if (savedPinCode) {
+        const oldCheck = prompt('현재 사용 중인 4자리 비밀번호를 먼저 입력해 주세요:');
+        if (oldCheck === null) return;
+        if (oldCheck.trim() !== savedPinCode) {
+          alert('현재 비밀번호가 일치하지 않습니다.');
+          return;
+        }
+      }
+
+      const newPin = prompt('새로 사용할 숫자 4자리 비밀번호를 입력해 주세요 (예: 1234):');
+      if (newPin === null) return;
+      const cleanPin = newPin.trim();
+      if (!/^\d{4}$/.test(cleanPin)) {
+        alert('숫자 4자리를 정확히 입력해 주세요!');
+        return;
+      }
+
+      savedPinCode = cleanPin;
+      localStorage.setItem('ledger_pin_code_v7', savedPinCode);
+      updateSecurityModalUI();
+
+      if (supabaseClient) {
+        await supabaseClient.from('ledger').upsert([{
+          id: PIN_SYNC_ID,
+          title: savedPinCode,
+          amount: 1,
+          type: 'system',
+          category: 'security_pin',
+          created_at: new Date().toISOString()
+        }]);
+      }
+
+      fireCelebrationParticles('default');
+      alert('🔒 4자리 암호가 설정되었습니다! 이제 Face ID도 등록해 보세요.');
+    }
+
+    async function disableSecurityLock() {
+      const check = prompt('잠금을 해제하려면 현재 4자리 비밀번호를 입력해 주세요:');
+      if (check === null) return;
+      if (check.trim() !== savedPinCode) {
+        alert('비밀번호가 일치하지 않습니다.');
+        return;
+      }
+
+      savedPinCode = '';
+      faceIdCoordId = '';
+      localStorage.removeItem('ledger_pin_code_v7');
+      localStorage.removeItem('ledger_faceid_cred_v7');
+      updateSecurityModalUI();
+
+      if (supabaseClient) {
+        await supabaseClient.from('ledger').delete().eq('id', PIN_SYNC_ID);
+      }
+      alert('🔓 가계부 잠금이 해제되었습니다.');
+    }
+
+    async function registerFaceID() {
+      if (!savedPinCode || savedPinCode.length !== 4) {
+        alert('먼저 [암호 설정/변경]에서 4자리 비밀번호를 설정한 뒤 Face ID를 등록해 주세요!');
+        return;
+      }
+
+      if (!window.PublicKeyCredential) {
+        alert('현재 브라우저 환경에서는 생체 인증을 지원하지 않습니다. (HTTPS 연결 필요)');
+        return;
+      }
+
+      try {
+        const challenge = new Uint8Array(32);
+        window.crypto.getRandomValues(challenge);
+        const userId = new Uint8Array(16);
+        window.crypto.getRandomValues(userId);
+
+        const credential = await navigator.credentials.create({
+          publicKey: {
+            challenge: challenge,
+            rp: { name: '스마트 가계부 iOS' },
+            user: {
+              id: userId,
+              name: 'ledger_owner',
+              displayName: '나의 가계부'
+            },
+            pubKeyCredParams: [
+              { type: 'public-key', alg: -7 },
+              { type: 'public-key', alg: -257 }
+            ],
+            authenticatorSelection: {
+              authenticatorAttachment: 'platform',
+              userVerification: 'required'
+            },
+            timeout: 60000
+          }
+        });
+
+        if (credential && credential.rawId) {
+          const b64Id = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
+          faceIdCoordId = b64Id;
+          localStorage.setItem('ledger_faceid_cred_v7', faceIdCoordId);
+          updateSecurityModalUI();
+          fireCelebrationParticles('gold');
+          alert('🪪 Face ID / Touch ID 등록 완료! 이제 앱을 켤 때 얼굴/지문 인식으로 즉시 열립니다.');
+        }
+      } catch (err) {
+        alert('생체 인증 등록이 취소되었거나 기기에서 허용되지 않았습니다.');
+      }
+    }
+
+    async function unlockWithFaceID(isAuto = false) {
+      if (!faceIdCoordId) {
+        if (!isAuto) alert('아직 Face ID가 등록되지 않았습니다. 비밀번호로 로그인한 뒤 상단 [🔒 잠금] 메뉴에서 Face ID를 등록해 주세요.');
+        return;
+      }
+
+      try {
+        const challenge = new Uint8Array(32);
+        window.crypto.getRandomValues(challenge);
+        const rawId = Uint8Array.from(atob(faceIdCoordId), c => c.charCodeAt(0));
+
+        await navigator.credentials.get({
+          publicKey: {
+            challenge: challenge,
+            allowCredentials: [{ type: 'public-key', id: rawId }],
+            userVerification: 'required',
+            timeout: 60000
+          }
+        });
+
+        hideLockScreen();
+      } catch (err) {
+        // 생체인증 취소 시 키패드로 풀도록 대기
+      }
+    }
+
+    // --- 파티클 & 캘린더 토글 ---
     function fireCelebrationParticles(type = 'default') {
       if (typeof confetti !== 'function') return;
       if (type === 'gold') {
@@ -762,7 +1182,6 @@
       }
     }
 
-    // --- 소비 캘린더 접기 / 펼치기 토글 함수 ---
     function toggleCalendarCollapse() {
       isCalendarOpen = !isCalendarOpen;
       const wrapper = document.getElementById('calendarCollapseWrapper');
@@ -780,7 +1199,7 @@
       }
     }
 
-    // --- 2단계 잔액 부족 & 3,000원 근접 알림 검사 엔진 ---
+    // --- 2단계 잔액 부족 알림 검사 엔진 ---
     function checkAndTriggerBalanceAlert() {
       const currentBal = baseBalanceOffset + getNetEntriesFlow();
       const nearThreshold = minBalanceAlert + NEAR_BALANCE_BUFFER;
@@ -811,7 +1230,7 @@
       }
     }
 
-    // --- 매일 밤 11시(23:00) 가계부 작성 리마인더 ---
+    // --- 매일 밤 11시 리마인더 ---
     function openNightReminderModal() {
       document.getElementById('nightReminderModal').classList.toggle('hidden');
     }
@@ -916,7 +1335,7 @@
       document.body.removeChild(link);
     }
 
-    // --- 정기 결제 1일 전 / 2일 전 사전 알림 ---
+    // --- 정기 결제 D-1 / D-2 사전 알림 ---
     function getDaysUntilBillingDay(billingDay) {
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -1147,7 +1566,7 @@
       totalEl.innerText = `${monthlySum.toLocaleString()}원`;
     }
 
-    // --- 목표 저축 금고 (클라우드 양방향 완벽 연동) ---
+    // --- 목표 저축 금고 ---
     async function promptVaultGoal() {
       const nameInput = prompt('🐷 저축 목표 이름을 입력해 주세요 (예: 아이패드 매직키보드, 여행 자금):', savingsVault.name || '목표 저축 금고');
       if (nameInput === null) return;
@@ -1326,7 +1745,7 @@
 
     async function requestNotificationPermission() {
       if (!('Notification' in window)) {
-        alert('현재 기기 환경에서는 시스템 푸시 알림을 지원하지 않습니다. 화면 팝업 경고로 대체됩니다.');
+        alert('현재 브라우저 환경에서는 시스템 푸시 알림을 지원하지 않습니다. 화면 팝업 경고로 대체됩니다.');
         return;
       }
       const perm = await Notification.requestPermission();
@@ -1462,7 +1881,7 @@
         const ok = await syncWithCloud(true);
         if (ok) {
           fireCelebrationParticles('gold');
-          alert('☁️ 클라우드 연결 완료! 이제 내역·정기결제·저축금고·예산이 모두 실시간 동기화됩니다.');
+          alert('☁️ 클라우드 연결 완료! 이제 내역·정기결제·저축금고·예산·보안암호가 모두 실시간 동기화됩니다.');
           toggleConfig();
         }
       } catch (err) {
@@ -1471,7 +1890,6 @@
       }
     }
 
-    // --- [핵심 업그레이드] 정기결제·저금통·예산·내역 완벽 양방향 동기화 ---
     async function syncWithCloud(showError = false) {
       if (!supabaseClient || isSyncing) return false;
       isSyncing = true;
@@ -1499,7 +1917,7 @@
         }
 
         if (Array.isArray(data)) {
-          // 1. 목표 예산 양방향 동기화
+          // 1. 목표 예산 동기화
           const cloudBudget = data.find(item => Number(item.id) === BUDGET_SYNC_ID);
           if (cloudBudget) {
             monthlyBudget = Number(cloudBudget.amount) || 0;
@@ -1515,7 +1933,7 @@
             }]);
           }
 
-          // 2. 기초 통장 잔고 보정값 양방향 동기화
+          // 2. 기초 통장 잔고 보정값 동기화
           const cloudBase = data.find(item => Number(item.id) === BASE_BALANCE_SYNC_ID);
           if (cloudBase) {
             const sign = cloudBase.category === 'negative' ? -1 : 1;
@@ -1532,7 +1950,7 @@
             }]);
           }
 
-          // 3. 부족 알림 기준 양방향 동기화
+          // 3. 부족 알림 기준 동기화
           const cloudAlert = data.find(item => Number(item.id) === MIN_BALANCE_ALERT_ID);
           if (cloudAlert) {
             minBalanceAlert = Number(cloudAlert.amount) || 10000;
@@ -1548,7 +1966,7 @@
             }]);
           }
 
-          // 4. 정기 결제(구독) 목록 양방향 병합 및 동기화
+          // 4. 정기 결제(구독) 목록 동기화
           const cloudSubs = data.find(item => Number(item.id) === SUBSCRIPTIONS_SYNC_ID);
           if (cloudSubs && cloudSubs.title) {
             try {
@@ -1562,7 +1980,7 @@
             await saveSubscriptionsToCloud();
           }
 
-          // 5. 목표 저축 금고(저금통) 양방향 동기화
+          // 5. 목표 저축 금고 동기화
           const cloudVault = data.find(item => Number(item.id) === VAULT_SYNC_ID);
           if (cloudVault && cloudVault.title) {
             try {
@@ -1576,7 +1994,24 @@
             await saveVaultToCloud();
           }
 
-          // 6. 일반 가계부 내역 동기화
+          // 6. 4자리 보안 암호 동기화
+          const cloudPin = data.find(item => Number(item.id) === PIN_SYNC_ID);
+          if (cloudPin && cloudPin.title && /^\d{4}$/.test(cloudPin.title)) {
+            savedPinCode = cloudPin.title;
+            localStorage.setItem('ledger_pin_code_v7', savedPinCode);
+            updateSecurityModalUI();
+          } else if (savedPinCode && savedPinCode.length === 4) {
+            await supabaseClient.from('ledger').upsert([{
+              id: PIN_SYNC_ID,
+              title: savedPinCode,
+              amount: 1,
+              type: 'system',
+              category: 'security_pin',
+              created_at: new Date().toISOString()
+            }]);
+          }
+
+          // 7. 일반 가계부 내역 동기화
           const cloudEntries = data.filter(item => {
             const numId = Number(item.id);
             return !SYSTEM_IDS.has(numId) &&
@@ -1702,7 +2137,7 @@
 
       [...entries].reverse().forEach(item => {
         if (!item.title) return;
-        const key = item.title.replace(/^[정기]\s*/, '').trim();
+        const key = item.title.replace(/^\[정기\]\s*/, '').trim();
         memoryBank[key] = {
           amount: Math.abs(Number(item.amount) || 0),
           type: item.type,
@@ -1913,7 +2348,6 @@
           setEntryType('expense');
           document.getElementById('memoryBadge').classList.add('hidden');
 
-          // 수입 등록 시 축하 파티클 발사!
           if (type === 'income') {
             fireCelebrationParticles('gold');
           }
